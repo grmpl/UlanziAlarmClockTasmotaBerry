@@ -1,7 +1,8 @@
-import Printer
 import fonts
 import json
 import math
+
+import MatrixController
 
 import BasicClockFace
 import SecondsClockFace
@@ -16,7 +17,7 @@ var clockFaces = [
 ];
 
 class ClockfaceManager
-    var printer
+    var matrixController
     var brightness
     var color
     var currentClockFace
@@ -25,7 +26,7 @@ class ClockfaceManager
     
     def init() 
         print("ClockfaceManager Init");
-        self.printer = Printer();
+        self.matrixController = MatrixController();
         
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -68,7 +69,7 @@ class ClockfaceManager
         self.update_brightness_from_sensor();
         
         self.currentClockFace.render()
-        self.printer.draw()
+        self.matrixController.draw()
     end
     
     def update_brightness_from_sensor()

@@ -2,7 +2,7 @@ import math
 import json
 import fonts
 
-class Printer
+class MatrixController
     var leds
     var strip
     var font
@@ -13,7 +13,7 @@ class Printer
     var long_string_offset
 
     def init()
-        print("Printer init")
+        print("MatrixController Init")
         self.row_size = 8
         self.col_size = 32
         self.long_string = ""
@@ -132,4 +132,4 @@ class Printer
     end
 end
 
-return Printer
+return MatrixController

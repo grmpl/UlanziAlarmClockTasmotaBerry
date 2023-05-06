@@ -2,15 +2,15 @@ import json
 
 class BatteryClockFace
     var clockfaceManager
-    var printer
+    var matrixController
     
     def init(clockfaceManager)
         print("BatteryClockFace Init");
         self.clockfaceManager = clockfaceManager;
-        self.printer = clockfaceManager.printer;
+        self.matrixController = clockfaceManager.matrixController;
         
-        self.printer.change_font('MatrixDisplay3x5');
-        self.printer.clear();
+        self.matrixController.change_font('MatrixDisplay3x5');
+        self.matrixController.clear();
     end
     
     def deinit() 
@@ -37,7 +37,7 @@ class BatteryClockFace
         var x_offset = 4
         var y_offset = 1
         
-        self.printer.print_string(temp_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(temp_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end
 

@@ -4,7 +4,7 @@ import string
 
 class BEDClockFace
     var clockfaceManager
-    var printer
+    var matrixController
     
     var hasValue
     var value
@@ -12,10 +12,10 @@ class BEDClockFace
     def init(clockfaceManager)
         print("BEDClockFace Init");
         self.clockfaceManager = clockfaceManager;
-        self.printer = clockfaceManager.printer;
+        self.matrixController = clockfaceManager.matrixController;
         
-        self.printer.change_font('Glance');
-        self.printer.clear();
+        self.matrixController.change_font('Glance');
+        self.matrixController.clear();
         
         self.hasValue = false
         self.value = 0
@@ -45,8 +45,8 @@ class BEDClockFace
         var x_offset = 2
         var y_offset = 1
         
-        self.printer.print_char("\xa5", 0 + x_offset, 0, fonts.palette['yellow'], self.clockfaceManager.brightness)
-        self.printer.print_string(bed_str, 0 + x_offset + 8, 0 + y_offset, fonts.palette['yellow'], self.clockfaceManager.brightness)
+        self.matrixController.print_char("\xa5", 0 + x_offset, 0, fonts.palette['yellow'], self.clockfaceManager.brightness)
+        self.matrixController.print_string(bed_str, 0 + x_offset + 8, 0 + y_offset, fonts.palette['yellow'], self.clockfaceManager.brightness)
     end
 end
 
