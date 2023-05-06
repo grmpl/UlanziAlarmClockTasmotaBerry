@@ -40,20 +40,6 @@ class Printer
         self.font_width = fonts.font_map[font_key]['width']
     end
 
-    def recommend_brightness()
-        var sensors = json.load(tasmota.read_sensors())
-        var illuminance = sensors['ANALOG']['Illuminance2']
-        var brightness = int(10 * math.log(illuminance))
-        if brightness < 10
-            brightness = 10
-        end
-        if brightness > 90
-            brightness = 90
-        end
-        # print("Brightness: ", self.brightness, ", Illuminance: ", illuminance)
-        return brightness
-    end
-
     # x is the column, y is the row, (0,0) from the top left
     def set_matrix_pixel_color(x, y, color, brightness)   
         # if y is odd, reverse the order of y
@@ -86,14 +72,14 @@ class Printer
         var actual_width = 0
         if self.font.contains(char) == false
             print("Font does not contain char: ", char)
-            return
+            return 0
         end
 
         var font_width = self.font_width
         var font_height = size(self.font[char])
         for i: 0..(font_height-1)
             var code = self.font[char][i]
-            for j: 0..(font_width-1)
+            for j: 0..7
                 if code & (1 << (7 - j)) != 0
                     self.set_matrix_pixel_color(x+j, y+i, color, brightness)
                     if j > actual_width
@@ -146,7 +132,4 @@ class Printer
     end
 end
 
-var printer = module("printer")
-printer.printer = Printer()
-
-return printer
+return Printer

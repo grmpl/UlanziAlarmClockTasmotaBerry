@@ -1,5 +1,9 @@
-# Ulanzi TC001
-<img src="https://templates.blakadder.com/assets/images/logo.svg" alt="Tasmota" width="300"/>
+# Tasmota Berry Apps for the Ulanzi TC001
+
+This repository contains a few berry script files that run on my Ulanzi TC001.
+It is just a cloud backup/should serve for inspiration for others. Don't expect any support whatsoever.
+
+Thanks a lot to [https://github.com/iliaan/ulanzi-lab](https://github.com/iliaan/ulanzi-lab) for laying the groundwork!
 
 ## Flash Tasmota firmware
 
@@ -12,70 +16,3 @@ To install Tasmota firmware on the Ulanzi TC001, follow these steps:
 2. Follow installation guide [here](https://templates.blakadder.com/ulanzi_TC001.html).
 3. In the Tasmota web interface, go to "Consoles" and select "Console". Enter the command "Pixels 256" to enable the 256-pixel display mode.
 4. Set the time zone via the console by entering the command "Timezone +2:00".
-
-**********************
-## [Berry](https://tasmota.github.io/docs/Berry/) Rainbow
-
-To set up a [rainbow](https://tasmota.github.io/docs/Berry_Addressable-LED/) effect on your Tasmota Berry device, follow these steps:
-1. Go to "Consoles" in the Tasmota web interface and select "Berry Scripting Console".
-2. Copy the code from [rainbow.be](rainbow.be) and paste it into the console.
-3. Run the code to display the rainbow effect on the device.
-
-To automatically start the rainbow effect when the device starts up:
-1. Create a new file called [autoexec.be](https://tasmota.github.io/docs/UFS/#autoexecbe) in the root directory of the device's file system.
-2. Copy the code from [rainbow.be](rainbow.be) to autoexec.be
-3. Save file and restart the device
-
-![](doc/Ulanzi_Manage_File_system.png)
-**********************
-## Clock
-
-To set up a clock on your Tasmota device, you need to follow these steps:
-
-1. Go to the Tasmota web interface.
-1. Click on "Consoles" and select "Manage File System".
-1. Create a new file called `fonts.be` and add the contents from [fonts.be](fonts.be).
-1. Create a new file called `printer.be` and add the contents from [printer.be](printer.be).
-1. Create a new file called `weather.be` and add the contents from [weather.be](weather.be).
-1. Create a new file called `clock.be` and add the contents from [clock.be](clock.be).
-1. Create a new file (or edit existing one) called `autoexec.be` with the contents from [autoexec.be](autoexec.be).
-
-![Ulanzi_Manage_File_system_Clock](doc/Ulanzi_Manage_File_system_Clock.png)
-
-These files contain the necessary code to display a clock on the device. Once the files are created and saved, restart the device to apply the changes. The clock should now be visible on the device display.
-
-## Clock Features
-* Time/Date/Stopwatch display
-* Temperature polled from https://open-meteo.com/
-  * Internal temperature sensor may be affected by nearby heat sources within the device
-* Humidity display - from internal sensor
-* Dew Point calculation
-* Battery level indication (Note: may require calibration and logic adjustments)
-* Illumination sensor for automatic brightness adjustment
-
-## Usage
-The clock can be controlled using the buttons on the device:
-* Use the left button (facing the device) to switch between Time/Date/Stopwatch display modes.
-* Use the right button to switch between Temperature/Humidity/Due Point/Battery level display modes.
-* Use the action button to change the color of the clock display. In stopwatch mode, the action button is used to start/stop the stopwatch.
-
-**********************
-## TODO Next
-
-**********************
-## Ideas
-* Print text in running line : news/stocks
-* Alarm Clock
-* Pixel Art
-* Snake
-* Yes/No questions/trivia/game/ai
-**********************
-## Links
-* https://github.com/aptonline/PixelIt_Ulanzi
-* https://blakadder.com/esphome-pixel-clock/
-* https://github.com/dhepper/font8x8
-* https://github.com/Ameba8195/Arduino/blob/master/hardware_v2/cores/arduino/font5x7.h
-* https://github.com/mikerr/codebug-arduino/blob/master/font4x5.h
-* https://www.espruino.com/modules/Font4x4Numeric.js
-* https://github.com/ninjablocks/arduino/blob/master/DMD/Font3x5.h
-* https://open-meteo.com/en/docs
