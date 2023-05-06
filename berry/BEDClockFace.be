@@ -48,6 +48,10 @@ class BEDClockFace
         self.matrixController.print_char("\xa5", 0 + x_offset, 0, fonts.palette['yellow'], self.clockfaceManager.brightness)
         self.matrixController.print_string(bed_str, 0 + x_offset + 8, 0 + y_offset, fonts.palette['yellow'], self.clockfaceManager.brightness)
     end
+    
+    def handleActionButton()
+        print("Banana")
+    end
 end
 
 return BEDClockFace

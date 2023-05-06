@@ -1,6 +1,7 @@
 import fonts
 import json
 import math
+import introspect
 
 import MatrixController
 
@@ -8,12 +9,14 @@ import BasicClockFace
 import SecondsClockFace
 import BEDClockFace
 import BatteryClockFace
+import NetClockFace
 
 var clockFaces = [
     BasicClockFace,
     SecondsClockFace,
     BEDClockFace,
-    BatteryClockFace
+    BatteryClockFace,
+    NetClockFace
 ];
 
 class ClockfaceManager
@@ -49,9 +52,10 @@ class ClockfaceManager
     end
 
     def on_button_action(value, trigger, msg)
-        # print(value)
-        # print(trigger)
-        # print(msg)
+        # instead of reflection, try/catch would also work here
+        if introspect.members(self.currentClockFace).find('handleActionButton') != nil
+            self.currentClockFace.handleActionButton()
+        end
     end
 
     def on_button_next(value, trigger, msg)
