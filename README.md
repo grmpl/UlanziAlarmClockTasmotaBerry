@@ -18,6 +18,11 @@ To install Tasmota firmware on the Ulanzi TC001, follow these steps:
 4. Set the time zone via the console by entering the command "Timezone +2:00".
 
 
-## Misc
+## Misc Notes
 
 - To stop processing of button events by tasmota, use `SetOption73 1`
+
+- To give exclusive matrix access to Berry:
+  - Configure Random GPIO as WS2812 ID 1
+  - Set the real GPIO 32 to WS2812 ID 2
+  - Remember that the WS2812 ID starts at 0 in berry

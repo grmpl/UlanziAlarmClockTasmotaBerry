@@ -19,7 +19,10 @@ class MatrixController
         self.long_string = ""
         self.long_string_offset = 0
 
-        self.leds = Leds(self.row_size*self.col_size, gpio.pin(gpio.WS2812, 32))
+        self.leds = Leds(
+            self.row_size * self.col_size, 
+            gpio.pin(gpio.WS2812, 1) # Look up the correct GPIO pin for WS2812 with ID 2 (1 in Berry)
+        )
         self.strip = self.leds.create_matrix(self.col_size, self.row_size)
 
         self.change_font('MatrixDisplay3x5')
