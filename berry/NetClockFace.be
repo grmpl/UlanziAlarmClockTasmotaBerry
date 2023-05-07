@@ -5,7 +5,7 @@ import util
 var pageSize = 8;
 var pageDisplayTime = 2;
 
-var modes = ['q', 'ip', 'rssi', 'mac']
+var modes = ['rssi', 'ip', 'mac']
 
 class NetClockFace
     var clockfaceManager

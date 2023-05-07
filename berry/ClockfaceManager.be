@@ -49,11 +49,14 @@ class ClockfaceManager
         
         self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
         self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+        
+        self.redraw()
     end
 
     def on_button_action(value, trigger, msg)
-        # instead of reflection, try/catch would also work here
-        if introspect.members(self.currentClockFace).find('handleActionButton') != nil
+        var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
+        
+        if handleActionMethod != nil
             self.currentClockFace.handleActionButton()
         end
     end
@@ -65,6 +68,8 @@ class ClockfaceManager
 
         self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
         self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+        
+        self.redraw()
     end
     
     
@@ -72,8 +77,16 @@ class ClockfaceManager
     def every_second()
         self.update_brightness_from_sensor();
         
+        self.redraw()
+    end
+    
+    def redraw()
+        #var start = tasmota.millis()
+        
         self.currentClockFace.render()
         self.matrixController.draw()
+        
+        #print("Redraw took", tasmota.millis() - start, "ms")
     end
     
     def update_brightness_from_sensor()
