@@ -25,7 +25,9 @@ class MatrixController
 
         self.leds = Leds(
             self.row_size * self.col_size, 
-            gpio.pin(gpio.WS2812, 1) # Look up the correct GPIO pin for WS2812 with ID 2 (1 in Berry)
+            gpio.pin(gpio.WS2812, 1), # Look up the correct GPIO pin for WS2812 with ID 2 (1 in Berry)
+            Leds.WS2812_GRB,
+            3
         )
         self.leds.gamma = false
         self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
@@ -49,9 +51,6 @@ class MatrixController
 
     def draw()
         self.matrix.show()
-        # https://github.com/adafruit/Adafruit_NeoPixel/issues/139
-        # (8*32)/33 = 7.75 => 8ms should be enough here
-        tasmota.delay(8)
     end
 
     def change_font(font_key)
