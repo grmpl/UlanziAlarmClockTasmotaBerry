@@ -34,7 +34,8 @@ class BEDClockFace
         self.value = number(payload) / 0.1
     end
     
-    def render()       
+    def render()
+        self.matrixController.clear()
         var bed_str = ""
         if self.hasValue
             bed_str = string.format("%5.1f", self.value)

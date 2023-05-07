@@ -37,7 +37,8 @@ class NetClockFace
         self.displayTimeCounter = 0
     end
     
-    def render()       
+    def render()
+        self.matrixController.clear()
         var wifiInfo = tasmota.wifi()
 
         var x_offset = 1

@@ -24,7 +24,8 @@ class BatteryClockFace
         self.showVoltage = !self.showVoltage
     end
     
-    def render()       
+    def render()
+        self.matrixController.clear()
         var sensors = json.load(tasmota.read_sensors())
         var value = sensors['ANALOG']['A1']
 

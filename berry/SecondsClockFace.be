@@ -16,12 +16,14 @@ class SecondsClockFace
 
     end
     
-    def render()       
+    def render()
+        self.matrixController.clear()     
         var rtc = tasmota.rtc()
-        # print("RTC: ", rtc)
+
         var time_str = tasmota.strftime('%H:%M:%S', rtc['local'])
         var x_offset = 2
         var y_offset = 1
+        
         self.matrixController.print_string(time_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end

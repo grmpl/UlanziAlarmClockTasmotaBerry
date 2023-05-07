@@ -4,13 +4,17 @@ import fonts
 
 class MatrixController
     var leds
-    var strip
+    var matrix
     var font
     var font_width
     var row_size
     var col_size
     var long_string
     var long_string_offset
+    
+    var prev_color
+    var prev_brightness
+    var prev_corrected_color
 
     def init()
         print("MatrixController Init")
@@ -23,19 +27,28 @@ class MatrixController
             self.row_size * self.col_size, 
             gpio.pin(gpio.WS2812, 1) # Look up the correct GPIO pin for WS2812 with ID 2 (1 in Berry)
         )
-        self.strip = self.leds.create_matrix(self.col_size, self.row_size)
+        self.leds.gamma = false
+        self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
 
         self.change_font('MatrixDisplay3x5')
 
         self.clear()
+        
+        self.prev_color = 0
+        self.prev_brightness = 0
+        self.prev_corrected_color = 0
     end
 
     def clear()
-        self.strip.clear()
+        for i: 0..size(self.matrix.pix_buffer)-1
+            self.matrix.pix_buffer[i] = 0;
+        end
+        
+        self.matrix.dirty()
     end
 
     def draw()
-        self.strip.show()
+        self.matrix.show()
     end
 
     def change_font(font_key)
@@ -54,8 +67,17 @@ class MatrixController
             # print("Invalid pixel: ", x, ", ", y)
             return
         end
-
-        self.strip.set_matrix_pixel_color(y, x, color, brightness)
+        
+        # Cache brightness calculation and gamma correction for this tuple of bri, color
+        if brightness != self.prev_brightness || color != self.prev_color
+            self.prev_brightness = brightness
+            self.prev_color = color
+            self.prev_corrected_color = self.to_gamma(color, brightness)
+        end
+        
+        # call the native function directly, bypassing set_matrix_pixel_color, to_gamma etc
+        # this is faster as otherwise to_gamma would be called for every single pixel even if they are the same
+        self.leds.call_native(10, y * self.col_size + x, self.prev_corrected_color)
     end
 
     # set pixel column to binary value
@@ -64,9 +86,6 @@ class MatrixController
             if value & (1 << i) != 0
                 # print("set pixel ", i, " to 1")
                 self.set_matrix_pixel_color(column, i, color, brightness)
-            else
-                # print("set pixel ", i, " to 0")
-                self.set_matrix_pixel_color(column, i, 0x000000, brightness)
             end
         end
     end
@@ -85,15 +104,14 @@ class MatrixController
             for j: 0..7
                 if code & (1 << (7 - j)) != 0
                     self.set_matrix_pixel_color(x+j, y+i, color, brightness)
+
                     if j > actual_width
                         actual_width = j
                     end
-                else
-                    self.set_matrix_pixel_color(x+j, y+i, 0x000000, brightness)
                 end
             end
         end
-
+        
         return actual_width + 1
     end
 
@@ -132,6 +150,19 @@ class MatrixController
         else
             self.long_string_offset = 0
         end
+    end
+    
+    # Taken straight from the tasmota berry source-code
+    # https://github.com/arendst/Tasmota/blob/e9d1e8c7250d89a24ade0c42a64731d6c492bbb2/lib/libesp32/berry_tasmota/src/embedded/leds.be#L158-L172
+    def to_gamma(rgbw, bri)
+       bri = (bri != nil) ? bri : 100
+       var r = tasmota.scale_uint(bri, 0, 100, 0, (rgbw & 0xFF0000) >> 16)
+       var g = tasmota.scale_uint(bri, 0, 100, 0, (rgbw & 0x00FF00) >> 8)
+       var b = tasmota.scale_uint(bri, 0, 100, 0, (rgbw & 0x0000FF))
+       
+       return light.gamma8(r) << 16 |
+              light.gamma8(g) <<  8 |
+              light.gamma8(b)
     end
 end
 

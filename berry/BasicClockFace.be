@@ -24,7 +24,8 @@ class BasicClockFace
         self.showSecondsDots = !self.showSecondsDots
     end
     
-    def render()       
+    def render()
+        self.matrixController.clear()
         var rtc = tasmota.rtc()
         
         var time_str = tasmota.strftime('%H:%M', rtc['local'])
@@ -39,23 +40,15 @@ class BasicClockFace
         
         if current_seconds >= 12 && self.showSecondsDots
             self.matrixController.set_matrix_pixel_color(0, 0, self.clockfaceManager.color, seconds_brightness)
-        else
-            self.matrixController.set_matrix_pixel_color(0, 0, 0x000000, self.clockfaceManager.brightness)
         end
         if current_seconds >= 24 && self.showSecondsDots
             self.matrixController.set_matrix_pixel_color(31, 0, self.clockfaceManager.color, seconds_brightness)
-        else
-            self.matrixController.set_matrix_pixel_color(31, 0, 0x000000, self.clockfaceManager.brightness)
         end
         if current_seconds >= 36 && self.showSecondsDots
             self.matrixController.set_matrix_pixel_color(31, 7, self.clockfaceManager.color, seconds_brightness)
-        else
-            self.matrixController.set_matrix_pixel_color(31, 7, 0x000000, self.clockfaceManager.brightness)
         end
         if current_seconds >= 48 && self.showSecondsDots
             self.matrixController.set_matrix_pixel_color(0, 7, self.clockfaceManager.color, seconds_brightness)
-        else
-            self.matrixController.set_matrix_pixel_color(0, 7, 0x000000, self.clockfaceManager.brightness)
         end
     end
     
