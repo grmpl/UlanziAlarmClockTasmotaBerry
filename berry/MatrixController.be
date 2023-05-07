@@ -27,7 +27,7 @@ class MatrixController
             self.row_size * self.col_size, 
             gpio.pin(gpio.WS2812, 1), # Look up the correct GPIO pin for WS2812 with ID 2 (1 in Berry)
             Leds.WS2812_GRB,
-            3
+            3 # There seems to be an RMT conflict with the default one causing pixel corruption
         )
         self.leds.gamma = false
         self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
