@@ -29,6 +29,8 @@ class BatteryClockFace
         var sensors = json.load(tasmota.read_sensors())
         var value = sensors['ANALOG']['A1']
 
+        var x_offset = 4
+        var y_offset = 1
         var bat_str = "???"
 
         if self.showVoltage
@@ -46,10 +48,11 @@ class BatteryClockFace
             
             value = int(((value - min) * 100) / (max - min))
             bat_str = 'BAT ' + str(value) + "%"
+            
+            if value == 100
+                x_offset = 2
+            end
         end
-        
-        var x_offset = 4
-        var y_offset = 1
         
         self.matrixController.print_string(bat_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
