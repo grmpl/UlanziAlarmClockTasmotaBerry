@@ -49,6 +49,9 @@ class MatrixController
 
     def draw()
         self.matrix.show()
+        # https://github.com/adafruit/Adafruit_NeoPixel/issues/139
+        # (8*32)/33 = 7.75 => 8ms should be enough here
+        tasmota.delay(8)
     end
 
     def change_font(font_key)
