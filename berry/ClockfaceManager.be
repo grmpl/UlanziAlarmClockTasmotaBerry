@@ -113,17 +113,21 @@ class ClockfaceManager
     end
     
     def save_before_restart()
-        self.currentClockFace = nil;
-        self.matrixController.change_font('MatrixDisplay3x5');
-        self.matrixController.clear();
-        
-        self.matrixController.print_string("Reboot...", 0, 2, self.color, self.brightness) 
-        self.matrixController.draw();
-        print("This is just to add some delay");
-        print("   ")
-        print("According to all known laws of aviation, there is no way a bee should be able to fly.")
-        print("Its wings are too small to get its fat little body off the ground.")
-        print("The bee, of course, flies anyway, because bees don't care what humans think is impossible")
+        # This function may be called on other occasions than just before a restart
+        # => We need to make sure that it is in fact a restart
+        if tasmota.global.restart_flag == 1 || tasmota.global.restart_flag == 2
+            self.currentClockFace = nil;
+            self.matrixController.change_font('MatrixDisplay3x5');
+            self.matrixController.clear();
+            
+            self.matrixController.print_string("Reboot...", 0, 2, self.color, self.brightness) 
+            self.matrixController.draw();
+            print("This is just to add some delay");
+            print("   ")
+            print("According to all known laws of aviation, there is no way a bee should be able to fly.")
+            print("Its wings are too small to get its fat little body off the ground.")
+            print("The bee, of course, flies anyway, because bees don't care what humans think is impossible")
+        end
     end
 end
 
