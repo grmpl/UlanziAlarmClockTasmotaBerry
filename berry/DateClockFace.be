@@ -29,7 +29,7 @@ class DateClockFace
         var rtc = tasmota.rtc()
         
         var time_data = tasmota.time_dump(rtc['local'])
-        var x_offset = 5
+        var x_offset = 4
         var y_offset = 0
         
         var date_str = ""
@@ -40,7 +40,7 @@ class DateClockFace
             x_offset += 2
         end
         
-        self.matrixController.print_string(date_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness) 
+        self.matrixController.print_string(date_str, x_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness) 
     end
 end
 

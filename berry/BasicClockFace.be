@@ -28,9 +28,9 @@ class BasicClockFace
         var rtc = tasmota.rtc()
         
         var time_str = tasmota.strftime('%H:%M', rtc['local'])
-        var x_offset = 5
+        var x_offset = 4
         var y_offset = 0
-        self.matrixController.print_string(time_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(time_str, x_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         
         
 

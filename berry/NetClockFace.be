@@ -44,6 +44,7 @@ class NetClockFace
         var x_offset = 1
         var y_offset = 1
         var wifi_str = "???"
+        var _pageSize = pageSize
         
         if wifiInfo["up"]
             if modes[self.modeIdx] == "q"
@@ -65,6 +66,7 @@ class NetClockFace
             end
             if modes[self.modeIdx] == "mac"
                 wifi_str = wifiInfo["mac"]
+                _pageSize += 1
             end
         else
             x_offset += 6
@@ -72,12 +74,8 @@ class NetClockFace
         end
         
         if size(wifi_str) > pageSize
-            var splitStr = util.splitStringToChunks(wifi_str, pageSize)
+            var splitStr = util.splitStringToChunks(wifi_str, _pageSize)
             wifi_str = splitStr[self.page]
-            
-            while size(wifi_str) <= pageSize # for good measure
-                wifi_str += " " # pad with spaces to overwrite the previous characters
-            end
             
             self.displayTimeCounter = (self.displayTimeCounter + 1) % (pageDisplayTime + 1)
             
@@ -89,7 +87,7 @@ class NetClockFace
             self.displayTimeCounter = 0
         end
         
-        self.matrixController.print_string(wifi_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(wifi_str, x_offset, y_offset, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end
 

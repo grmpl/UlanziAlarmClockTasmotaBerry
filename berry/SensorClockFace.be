@@ -1,6 +1,7 @@
 import json
 import math
 import util
+import string
 
 var modes = ['illuminance']
 
@@ -34,24 +35,20 @@ class SensorClockFace
 
         var x_offset = 2
         var y_offset = 1
-        var sensor_str = "???"
+        var sensor_str = "?????"
         
         var sensor_reading = ""
         var suffix = ""
         
         
         if modes[self.modeIdx] == "illuminance"
-            sensor_reading = str(sensorInfo['ANALOG']['Illuminance2'])
+            sensor_reading = string.format("%5i", sensorInfo['ANALOG']['Illuminance2'])
             suffix = "lx"
         end
         
-        while size(sensor_reading + suffix) < 7
-            sensor_reading = " " + sensor_reading
-        end
-        sensor_str = sensor_reading + suffix
+        sensor_str = sensor_reading + suffix   
         
-        
-        self.matrixController.print_string(sensor_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(sensor_str, x_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end
 

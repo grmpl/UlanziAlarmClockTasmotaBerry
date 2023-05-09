@@ -24,7 +24,7 @@ class SecondsClockFace
         var x_offset = 2
         var y_offset = 1
         
-        self.matrixController.print_string(time_str, 0 + x_offset, 0 + y_offset, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(time_str, x_offset, y_offset, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end
 

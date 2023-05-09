@@ -92,14 +92,14 @@ class MatrixController
         end
     end
 
-    def print_char(char, x, y, color, brightness)
-        var actual_width = 0
+    def print_char(char, x, y, collapse, color, brightness)
+        var actual_width = collapse ? -1 : self.font_width
+        
         if self.font.contains(char) == false
             print("Font does not contain char: ", char)
             return 0
         end
 
-        var font_width = self.font_width
         var font_height = size(self.font[char])
         for i: 0..(font_height-1)
             var code = self.font[char][i]
@@ -112,21 +112,19 @@ class MatrixController
                     end
                 end
             end
-        end
+        end  
         
-        return actual_width + 1
+        return collapse ? actual_width + 1 : actual_width
     end
 
-    def print_string(string, x, y, color, brightness)
+    def print_string(string, x, y, collapse, color, brightness)
         var char_offset = 0
+        
         for i: 0..(size(string)-1)
-            if x + char_offset > self.col_size
-                return true
-            end
-
             var actual_width = 0
+            
             if x + char_offset > 1 - self.font_width
-                actual_width = self.print_char(string[i], x + char_offset, y, color, brightness)
+                actual_width = self.print_char(string[i], x + char_offset, y, collapse, color, brightness)
             end
 
             if actual_width == 0
@@ -134,10 +132,8 @@ class MatrixController
             end
 
             char_offset += actual_width + 1
-            self.print_binary(0, x + char_offset - 1, y, color, brightness)
+            self.print_binary(0, x + char_offset, y, color, brightness)
         end
-
-        return false # no more string to print
     end
     
     # Taken straight from the tasmota berry source-code

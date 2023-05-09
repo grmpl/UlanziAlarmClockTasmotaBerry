@@ -38,16 +38,16 @@ class BEDClockFace
         self.matrixController.clear()
         var bed_str = ""
         if self.hasValue
-            bed_str = string.format("%5.1f", self.value)
+            bed_str = string.format("%3.1f", self.value)
         else
-            bed_str = " ???"
+            bed_str = "???"
         end
         
         var x_offset = 2
         var y_offset = 1
         
-        self.matrixController.print_char("\xa5", 0 + x_offset, 0, fonts.palette['yellow'], self.clockfaceManager.brightness)
-        self.matrixController.print_string(bed_str, 0 + x_offset + 8, 0 + y_offset, fonts.palette['yellow'], self.clockfaceManager.brightness)
+        self.matrixController.print_char("\xa5", x_offset, 0, false, fonts.palette['yellow'], self.clockfaceManager.brightness)
+        self.matrixController.print_string(bed_str, x_offset + 12, y_offset, false, fonts.palette['yellow'], self.clockfaceManager.brightness)
     end
     
     def handleActionButton()

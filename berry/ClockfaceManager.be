@@ -9,6 +9,7 @@ import BasicClockFace
 import DateClockFace
 import SecondsClockFace
 import BEDClockFace
+import SolarClockFace
 import BatteryClockFace
 import SensorClockFace
 import NetClockFace
@@ -18,6 +19,7 @@ var clockFaces = [
     DateClockFace,
     SecondsClockFace,
     BEDClockFace,
+    SolarClockFace,
     BatteryClockFace,
     SensorClockFace,
     NetClockFace
@@ -38,7 +40,7 @@ class ClockfaceManager
         self.brightness = 50;
         self.color = fonts.palette['red']
         
-        self.matrixController.print_string("Hello :)", 2, 2, self.color, self.brightness)
+        self.matrixController.print_string("Hello :)", 2, 2, true, self.color, self.brightness)
         self.matrixController.draw()
         
         self.currentClockFaceIdx = 0
@@ -120,7 +122,7 @@ class ClockfaceManager
             self.matrixController.change_font('MatrixDisplay3x5');
             self.matrixController.clear();
             
-            self.matrixController.print_string("Reboot...", 0, 2, self.color, self.brightness) 
+            self.matrixController.print_string("Reboot...", 0, 2, true, self.color, self.brightness) 
             self.matrixController.draw();
             print("This is just to add some delay");
             print("   ")
