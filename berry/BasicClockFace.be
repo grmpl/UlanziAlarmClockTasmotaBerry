@@ -1,5 +1,3 @@
-var render_loop_cron_id = "basic_clock_face_render";
-
 class BasicClockFace
     var clockfaceManager
     var matrixController
@@ -22,6 +20,7 @@ class BasicClockFace
     
     def handleActionButton()
         self.showSecondsDots = !self.showSecondsDots
+        tasmota.cmd("buzzer")
     end
     
     def render()

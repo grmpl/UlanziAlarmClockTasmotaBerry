@@ -53,19 +53,22 @@ class NetClockFace
                     wifiQuality = " " + wifiQuality
                 end
                 
-                wifi_str = " WF " + wifiQuality + "%"
+                x_offset += 3
+                wifi_str = "WF " + wifiQuality + "%"
             end
             if modes[self.modeIdx] == "ip"
                 wifi_str = wifiInfo["ip"]
             end
             if modes[self.modeIdx] == "rssi"
-                wifi_str = " " + str(wifiInfo["rssi"]) + " dBm"
+                x_offset += 3
+                wifi_str = str(wifiInfo["rssi"]) + " dBm"
             end
             if modes[self.modeIdx] == "mac"
                 wifi_str = wifiInfo["mac"]
             end
         else
-            wifi_str = "  DOWN  " # padding to overwrite old characters
+            x_offset += 6
+            wifi_str = "DOWN"
         end
         
         if size(wifi_str) > pageSize

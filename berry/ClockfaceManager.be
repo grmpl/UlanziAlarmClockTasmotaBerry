@@ -6,16 +6,20 @@ import introspect
 import MatrixController
 
 import BasicClockFace
+import DateClockFace
 import SecondsClockFace
 import BEDClockFace
 import BatteryClockFace
+import SensorClockFace
 import NetClockFace
 
 var clockFaces = [
     BasicClockFace,
+    DateClockFace,
     SecondsClockFace,
     BEDClockFace,
     BatteryClockFace,
+    SensorClockFace,
     NetClockFace
 ];
 
@@ -33,6 +37,9 @@ class ClockfaceManager
         
         self.brightness = 50;
         self.color = fonts.palette['red']
+        
+        self.matrixController.print_string("Hello :)", 2, 2, self.color, self.brightness)
+        self.matrixController.draw()
         
         self.currentClockFaceIdx = 0
         self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
@@ -105,6 +112,19 @@ class ClockfaceManager
         self.brightness = brightness;
     end
     
+    def save_before_restart()
+        self.currentClockFace = nil;
+        self.matrixController.change_font('MatrixDisplay3x5');
+        self.matrixController.clear();
+        
+        self.matrixController.print_string("Reboot...", 0, 2, self.color, self.brightness) 
+        self.matrixController.draw();
+        print("This is just to add some delay");
+        print("   ")
+        print("According to all known laws of aviation, there is no way a bee should be able to fly.")
+        print("Its wings are too small to get its fat little body off the ground.")
+        print("The bee, of course, flies anyway, because bees don't care what humans think is impossible")
+    end
 end
 
 return ClockfaceManager

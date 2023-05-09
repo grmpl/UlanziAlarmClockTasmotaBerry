@@ -139,20 +139,6 @@ class MatrixController
 
         return false # no more string to print
     end
-
-    def print_long_string(string, x, y, color, brightness)
-        if self.long_string != string
-            self.long_string = string
-            self.long_string_offset = 0
-        end
-
-        var is_continue = self.print_string(self.long_string, x - self.long_string_offset, y, color, brightness)
-        if is_continue
-            self.long_string_offset += 1
-        else
-            self.long_string_offset = 0
-        end
-    end
     
     # Taken straight from the tasmota berry source-code
     # https://github.com/arendst/Tasmota/blob/e9d1e8c7250d89a24ade0c42a64731d6c492bbb2/lib/libesp32/berry_tasmota/src/embedded/leds.be#L158-L172
