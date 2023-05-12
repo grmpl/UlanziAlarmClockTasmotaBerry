@@ -1,30 +1,26 @@
 import json
 import string
 
-class BatteryClockFace
+import BaseClockFace
+
+class BatteryClockFace: BaseClockFace
     var clockfaceManager
     var matrixController
     var showVoltage
-    
+
     def init(clockfaceManager)
-        print("BatteryClockFace Init");
-        self.clockfaceManager = clockfaceManager;
-        self.matrixController = clockfaceManager.matrixController;
-        
+        super(self).init(clockfaceManager);
+
         self.matrixController.change_font('MatrixDisplay3x5');
         self.matrixController.clear();
-        
+
         self.showVoltage = false
     end
-    
-    def deinit() 
-        print("BatteryClockFace DeInit");
-    end
-    
+
     def handleActionButton()
         self.showVoltage = !self.showVoltage
     end
-    
+
     def render()
         self.matrixController.clear()
         var sensors = json.load(tasmota.read_sensors())
@@ -40,19 +36,19 @@ class BatteryClockFace
         else
             var min = 2000
             var max = 2600
-            
+
             if value < min
                 value = min
             end
             if value > max
                 value = max
             end
-            
+
             value = int(((value - min) * 100) / (max - min))
             bat_str = 'BAT' + string.format("%3i", value) + "%"
-           
+
         end
-        
+
         self.matrixController.print_string(bat_str, x_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 end
