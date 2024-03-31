@@ -15,7 +15,7 @@ To install Tasmota firmware on the Ulanzi TC001, follow these steps:
 1. Download the Tasmota firmware from the [official Tasmota website](http://ota.tasmota.com/tasmota32/release/).
 2. Follow installation guide [here](https://templates.blakadder.com/ulanzi_TC001.html).
 3. In the Tasmota web interface, go to "Consoles" and select "Console". Enter the command "Pixels 256" to enable the 256-pixel display mode.
-4. Set the time zone via the console by entering the command "Timezone +2:00".
+4. Set the time zone via the console by entering the correct command according to [the tasmota docs](https://tasmota.github.io/docs/Timezone-Table/).
 
 
 ## Misc Notes
