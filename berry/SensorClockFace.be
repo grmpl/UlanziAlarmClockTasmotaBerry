@@ -38,7 +38,7 @@ class SensorClockFace: BaseClockFace
 
 
         if modes[self.modeIdx] == "illuminance"
-            sensor_reading = string.format("%5i", sensorInfo['ANALOG']['Illuminance2'])
+            sensor_reading = string.format("%5i", sensorInfo['ANALOG']['Illuminance1'])
             suffix = "lx"
         end
 

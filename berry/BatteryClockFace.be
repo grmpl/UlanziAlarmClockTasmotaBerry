@@ -24,7 +24,7 @@ class BatteryClockFace: BaseClockFace
     def render()
         self.matrixController.clear()
         var sensors = json.load(tasmota.read_sensors())
-        var value = sensors['ANALOG']['A1']
+        var value = sensors['ANALOG']['A2']
 
         var x_offset = 2
         var y_offset = 1

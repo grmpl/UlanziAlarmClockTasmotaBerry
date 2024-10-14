@@ -100,7 +100,7 @@ class ClockfaceManager
 
     def update_brightness_from_sensor()
         var sensors = json.load(tasmota.read_sensors());
-        var illuminance = sensors['ANALOG']['Illuminance2'];
+        var illuminance = sensors['ANALOG']['Illuminance1'];
 
         var brightness = int(10 * math.log(illuminance));
         if brightness < 10
