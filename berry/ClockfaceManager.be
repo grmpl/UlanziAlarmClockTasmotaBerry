@@ -59,6 +59,12 @@ class ClockfaceManager
         # Reset Snooze after reinit
         self.snoozerunning = 0
         persist.snooze = 0
+
+        # Check for AlarmActive and initialize if necessary
+        if persist.member('alarmactive') == nil
+            persist.alarmactive = 0
+        end
+
         
         # And create a custom Tasmota-Command
         tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
