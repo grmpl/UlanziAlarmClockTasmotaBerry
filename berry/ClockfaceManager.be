@@ -2,40 +2,46 @@ import fonts
 import json
 import math
 import introspect
+import persist
+import webserver
 
 import MatrixController
+import AlarmHandler
 
-import BasicClockFace
+import ClockClockFace
 import DateClockFace
-import SecondsClockFace
-import BEDClockFace
-import SolarClockFace
-import BatteryClockFace
-import SensorClockFace
-import NetClockFace
+import Alarm1ClockFace
+import Alarm2ClockFace
+import Alarm3ClockFace
+import Alarm4ClockFace
+
+
 
 var clockFaces = [
-    BasicClockFace,
+    ClockClockFace,
     DateClockFace,
-    SecondsClockFace,
-    BEDClockFace,
-    SolarClockFace,
-    BatteryClockFace,
-    SensorClockFace,
-    NetClockFace
+    Alarm1ClockFace,
+    Alarm2ClockFace,
+    Alarm3ClockFace,
+    Alarm4ClockFace
 ];
 
 class ClockfaceManager
     var matrixController
+    var alarmHandler
     var brightness
     var color
     var currentClockFace
     var currentClockFaceIdx
+    var snoozerunning
+
+    static snoozetime=300 # 5 minutes
 
 
     def init()
-        print("ClockfaceManager Init");
-        self.matrixController = MatrixController();
+        log("ClockfaceManager Init",3);
+        self.matrixController = MatrixController()
+        self.alarmHandler = AlarmHandler()
 
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -49,24 +55,95 @@ class ClockfaceManager
         tasmota.add_rule("Button1#State", / value, trigger, msg -> self.on_button_prev(value, trigger, msg))
         tasmota.add_rule("Button2#State", / value, trigger, msg -> self.on_button_action(value, trigger, msg))
         tasmota.add_rule("Button3#State", / value, trigger, msg -> self.on_button_next(value, trigger, msg))
+
+        # Reset Snooze after reinit
+        self.snoozerunning = 0
+        persist.snooze = 0
+        
+        # And create a custom Tasmota-Command
+        tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
+        
+         
     end
+
+    # Define a custom command
+    def cmdAlarmActivate(cmd,idx,payload,payload_json)
+        # persist Alarmnumber 
+        var num=int(payload)
+        persist.alarmactive=num
+        persist.save()
+        if persist.member("alarmactive") == num
+            tasmota.resp_cmnd("{\"alarmactive\":" + str(num) + "}" )
+        else
+            log("cmdAlarmActivate: Could not save persist.alarmactive with value " + str(num),1)
+            tasmota.resp_cmnd_failed()
+        end
+    end
+
+    # Define a new Web-Button
+    def web_add_main_button()
+        webserver.content_send("<p></p><button onclick='la(\"&alarmoff=1\");'>Alarm Off</button>")
+    end
+
+    # And react on Button-Click
+    def web_sensor()
+       #print(webserver.arg_size(), webserver.arg_name(0),webserver.arg(0),webserver.arg_name(1),webserver.arg(1),webserver.arg_name(2),webserver.arg(2))
+        if webserver.has_arg("alarmoff")
+           persist.alarmactive=0
+           persist.save()
+           log("ClockfaceManager: Alarm switched off by Web-Button") 
+        end
+    end
+
+
+    # React on Button action
+    # Button-action: 10=Single, 11=Double, 12=Triple, 3=Hold, 15:Clean (Release)
 
     def on_button_prev(value, trigger, msg)
         # print(value)
         # print(trigger)
         # print(msg)
+        # If Alarm is active and no Snooze, activate Snooze, do nothing
+        if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
+            log("Snooze activated by button_prev",2)
+            tasmota.cmd("_buzzer 0",true)
+            persist.snooze=1
+            persist.save()
+            self.snoozerunning = self.snoozetime
+            # I suspect interference with other redraws, so this is disabled.
+            # self.redraw()
+        else
 
-        self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
-        self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+            self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
-        self.redraw()
+            #self.redraw()
+        end
     end
 
     def on_button_action(value, trigger, msg)
-        var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
-
-        if handleActionMethod != nil
-            self.currentClockFace.handleActionButton()
+               
+        # If Alarm is active handle button different
+        var alarmset = persist.member('alarmactive')
+        if alarmset > 0 && value == 3 #Hold will switch off Alarm on all faces
+            log("ClockfaceManager: Alarm switched off",2)
+            tasmota.cmd("_buzzer 1",true)
+            persist.alarmactive=0
+            #self.redraw()
+        elif value == 15 # Clear (release of Hold) will never be handled! 
+            # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold
+        elif  alarmset > 0 && persist.member('snooze') == 0 #if Alarm on, always do Snooze on
+            log("ClockfaceManager: Snooze activated by button_action",2)
+            tasmota.cmd("_buzzer 0",true)
+            persist.snooze=1
+            persist.save()
+            self.snoozerunning = self.snoozetime
+            #self.redraw()
+        else
+            var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
+            if handleActionMethod != nil
+                self.currentClockFace.handleActionButton()
+            end
         end
     end
 
@@ -74,21 +151,63 @@ class ClockfaceManager
         # print(value)
         # print(trigger)
         # print(msg)
+        # If Alarm is active and no Snooze, activate Snooze
+        if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
+            log("ClockfaceManager: Snooze activated by button_next",2)
+            tasmota.cmd("_buzzer 0",true)
+            persist.snooze=1
+            persist.save()
+            self.snoozerunning = self.snoozetime
+            self.redraw()
+        else
+            self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
-        self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
-        self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
-
-        self.redraw()
+            self.redraw()
+        end
     end
 
 
     # This will be called automatically every 1s by the tasmota framework
     def every_second()
-        self.update_brightness_from_sensor();
 
+
+        # Check for Alarm
+        var alarmset = persist.member('alarmactive')
+        # Alarm set and no Snooze
+        if alarmset > 0 && persist.member('snooze') == 0
+            log("ClockfaceManager: Alarm active, beeping",3)
+            self.alarmHandler.beep()
+        # Alarm set and Snooze on
+        elif alarmset > 0 && persist.member('snooze') > 0
+            # Snooze decrement
+            if self.snoozerunning > 1
+                log("ClockfaceManager: Snooze active, decrementing",3)
+                self.snoozerunning = self.snoozerunning - 1
+            # Snooze at 1 or 0
+            else
+                log("ClockfaceManager: End of Snooze",3)
+                persist.snooze = 0
+                persist.save()
+                self.snoozerunning = 0
+                self.alarmHandler.beepindex = 0
+                self.alarmHandler.beep()
+            end
+        # Alarm off, but still Snooze active
+        elif alarmset == 0 && persist.member('snooze') > 0
+            log("ClockfaceManager: Alarm off, but Snooze still on",3)
+            persist.snooze = 0
+            self.snoozerunning = 0
+            persist.save()
+        end
+
+        self.update_brightness_from_sensor()
         self.redraw()
+
+
     end
 
+    # This will redraw current face
     def redraw()
         #var start = tasmota.millis()
 
@@ -98,6 +217,7 @@ class ClockfaceManager
         #print("Redraw took", tasmota.millis() - start, "ms")
     end
 
+    # For updating brightness
     def update_brightness_from_sensor()
         var sensors = json.load(tasmota.read_sensors());
         var illuminance = sensors['ANALOG']['Illuminance1'];
@@ -114,6 +234,7 @@ class ClockfaceManager
         self.brightness = brightness;
     end
 
+    # Some cleanups for gracefull shutdown
     def save_before_restart()
         # This function may be called on other occasions than just before a restart
         # => We need to make sure that it is in fact a restart

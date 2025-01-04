@@ -17,7 +17,7 @@ class MatrixController
     var prev_corrected_color
 
     def init()
-        print("MatrixController Init")
+        log("MatrixController Init",3)
         self.row_size = 8
         self.col_size = 32
         self.long_string = ""
@@ -66,7 +66,7 @@ class MatrixController
         end
 
         if x < 0 || x >= self.col_size || y < 0 || y >= self.row_size
-            # print("Invalid pixel: ", x, ", ", y)
+            log("Invalid pixel: "+str(x)+", "+str(y),3)
             return
         end
 
@@ -96,7 +96,7 @@ class MatrixController
         var actual_width = collapse ? -1 : self.font_width
 
         if self.font.contains(char) == false
-            print("Font does not contain char: ", char)
+            log("Font does not contain char: "+str(char),2)
             return 0
         end
 

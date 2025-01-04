@@ -8,14 +8,14 @@ class BaseClockFace
     var value
 
     def init(clockfaceManager)
-        print(classname(self), "Init");
+        log(classname(self) + "Init",3);
 
         self.clockfaceManager = clockfaceManager;
         self.matrixController = clockfaceManager.matrixController;
     end
 
     def deinit()
-        print(classname(self), "DeInit");
+        log(classname(self)+ "DeInit",3);
     end
 
 
