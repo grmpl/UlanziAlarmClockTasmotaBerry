@@ -13,7 +13,7 @@ Flashing Tasmota firmware on your device may potentially brick or damage the dev
 
 1. Flash Tasmota on your Ulanzi TC001. (You should compile an own build with support for the real time clock in the Ulanzi: https://tasmota.github.io/docs/DS3231/, otherwise your alarm clock will need network to set the time after reset)
 2. Set Template and Module according to https://templates.blakadder.com/ulanzi_TC001.html
-4. Set Pixel-Number of the Display in Console: `Pixels 256` (Please note: This is only possible with ID=1 on GPIO32 with WSD2812)
+4. ~~Set Pixel-Number of the Display in Console: `Pixels 256`~~ (The command works only with ID=1 on GPIO32 with WSD2812, and according to my eperience it is not necessary)
 5. Stop processing of buttons in Tasmota: `SetOption73 1`
 6. Set timezone according to your needs. For Middle Europe it's: `Backlog0 Timezone 99; TimeStd 0,0,10,1,3,60; TimeDst 0,0,3,1,2,120`
 7. Set latitude and longitude to your place. For Munich e.g. it's: `backlog latitude 48.138613; longitude 11.573833`
