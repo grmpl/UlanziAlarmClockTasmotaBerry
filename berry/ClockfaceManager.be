@@ -34,6 +34,7 @@ class ClockfaceManager
     var currentClockFace
     var currentClockFaceIdx
     var snoozerunning
+    var alarmwait
 
     static snoozetime=300 # 5 minutes
 
@@ -64,6 +65,10 @@ class ClockfaceManager
         if persist.member('alarmactive') == nil
             persist.alarmactive = 0
         end
+        persist.save()
+
+        # Initialize alarmwait
+        self.alarmwait=0
 
         
         # And create a custom Tasmota-Command
@@ -91,7 +96,7 @@ class ClockfaceManager
         webserver.content_send("<p></p><button onclick='la(\"&alarmoff=1\");'>Alarm Off</button>")
     end
 
-    # And react on Button-Click
+    # And react on Web-Button-Click
     def web_sensor()
        #print(webserver.arg_size(), webserver.arg_name(0),webserver.arg(0),webserver.arg_name(1),webserver.arg(1),webserver.arg_name(2),webserver.arg(2))
         if webserver.has_arg("alarmoff")
@@ -180,10 +185,14 @@ class ClockfaceManager
 
         # Check for Alarm
         var alarmset = persist.member('alarmactive')
-        # Alarm set and no Snooze
-        if alarmset > 0 && persist.member('snooze') == 0
+        # Alarm set and no Snooze, 
+        #  I decided to call AlarmHandler only every 10 seconds. It doesn't improve Beeping-performance, but it's easier to handle
+        if alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait <= 0
             log("ClockfaceManager: Alarm active, beeping",3)
             self.alarmHandler.beep()
+            self.alarmwait = 9
+        elif alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait > 0
+            self.alarmwait = self.alarmwait - 1
         # Alarm set and Snooze on
         elif alarmset > 0 && persist.member('snooze') > 0
             # Snooze decrement

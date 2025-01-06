@@ -5,18 +5,22 @@ class AlarmHandler
     var beepindex #  controls the current beeping sequence
 
     def init()
-        # beeplist: starting every 3 seconds
-        self.beeplist = [1,0,0,1,0,0,1,0,0,1,0,0,1,0,0]
+        # beeplist for 1 second interval: starting every 3 seconds
+        #self.beeplist = [1,0,0,1,0,0,1,0,0,1,0,0,1,0,0]
         #  now every 2 seconds
-        self.beeplist = self.beeplist + [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]
+        #self.beeplist = self.beeplist + [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]
         #  increasing
-        self.beeplist = self.beeplist + [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        #self.beeplist = self.beeplist + [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         #  increasing
-        self.beeplist = self.beeplist + [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+        #self.beeplist = self.beeplist + [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
         #  increasing
-        self.beeplist = self.beeplist + [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+        #self.beeplist = self.beeplist + [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
         #  increasing
-        self.beeplist = self.beeplist + [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4]
+        #self.beeplist = self.beeplist + [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4]
+        
+        # beeplist for 10 second interval:
+        # starting with 3 beeps in 3 seconds
+        self.beeplist=["4,3,27","6,3,17","11,3,7","21,3,2","21,3,2","21,3,2","21,3,2","21,3,2","21,3,2","21,3,2","21,3,2","21,3,2"]
         self.beepindex = 0
     end
 
@@ -24,7 +28,8 @@ class AlarmHandler
         var buzzerattr
 
         if self.beepindex < self.beeplist.size()
-            buzzerattr = str(self.beeplist[self.beepindex]) +",1"
+            #buzzerattr = str(self.beeplist[self.beepindex]) +",1"
+            buzzerattr = str(self.beeplist[self.beepindex]) 
             tasmota.cmd("_buzzer "+buzzerattr, true)
             self.beepindex += 1
         # Alarm off
