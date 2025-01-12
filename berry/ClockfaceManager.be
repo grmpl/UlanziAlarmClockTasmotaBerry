@@ -34,7 +34,6 @@ class ClockfaceManager
     var currentClockFace
     var currentClockFaceIdx
     var snoozerunning
-    var alarmwait
 
     static snoozetime=300 # 5 minutes
 
@@ -67,8 +66,6 @@ class ClockfaceManager
         end
         persist.save()
 
-        # Initialize alarmwait
-        self.alarmwait=0
 
         
         # And create a custom Tasmota-Command
@@ -100,9 +97,10 @@ class ClockfaceManager
     def web_sensor()
        #print(webserver.arg_size(), webserver.arg_name(0),webserver.arg(0),webserver.arg_name(1),webserver.arg(1),webserver.arg_name(2),webserver.arg(2))
         if webserver.has_arg("alarmoff")
-           persist.alarmactive=0
-           persist.save()
-           log("ClockfaceManager: Alarm switched off by Web-Button") 
+            self.alarmHandler.StopBuzzer() 
+            persist.alarmactive=0
+            persist.save()
+            log("ClockfaceManager: Alarm switched off by Web-Button",2) 
         end
     end
 
@@ -117,12 +115,8 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze, do nothing
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("Snooze activated by button_prev",2)
-            tasmota.cmd("_buzzer 0",true)
-            persist.snooze=1
-            persist.save()
-            self.snoozerunning = self.snoozetime
-            # I suspect interference with other redraws, so this is disabled.
-            # self.redraw()
+            self.activateSnooze()
+            #self.redraw() # it's ok to wait for the next redraw
         else
 
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
@@ -138,18 +132,15 @@ class ClockfaceManager
         var alarmset = persist.member('alarmactive')
         if alarmset > 0 && value == 3 #Hold will switch off Alarm on all faces
             log("ClockfaceManager: Alarm switched off",2)
-            tasmota.cmd("_buzzer 1",true)
+            self.alarmHandler.StopBuzzerWithBeep()
             persist.alarmactive=0
             #self.redraw()
         elif value == 15 # Clear (release of Hold) will never be handled! 
             # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold
         elif  alarmset > 0 && persist.member('snooze') == 0 #if Alarm on, always do Snooze on
             log("ClockfaceManager: Snooze activated by button_action",2)
-            tasmota.cmd("_buzzer 0",true)
-            persist.snooze=1
-            persist.save()
-            self.snoozerunning = self.snoozetime
-            #self.redraw()
+            self.activateSnooze()
+            #self.redraw() # it's ok to wait for the next redraw
         else
             var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
             if handleActionMethod != nil
@@ -165,11 +156,8 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("ClockfaceManager: Snooze activated by button_next",2)
-            tasmota.cmd("_buzzer 0",true)
-            persist.snooze=1
-            persist.save()
-            self.snoozerunning = self.snoozetime
-            self.redraw()
+            self.activateSnooze()
+            #self.redraw() # it's ok to wait for the next redraw
         else
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
@@ -183,16 +171,16 @@ class ClockfaceManager
     def every_second()
 
 
+        # First do the redraw, then check for Alarm, as Alarm-buzzing is very time-critical
+        self.update_brightness_from_sensor()
+        self.redraw()
+
         # Check for Alarm
         var alarmset = persist.member('alarmactive')
         # Alarm set and no Snooze, 
-        #  I decided to call AlarmHandler only every 10 seconds. It doesn't improve Beeping-performance, but it's easier to handle
-        if alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait <= 0
+        if alarmset > 0 && persist.member('snooze') == 0 
             log("ClockfaceManager: Alarm active, beeping",3)
-            self.alarmHandler.beep()
-            self.alarmwait = 9
-        elif alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait > 0
-            self.alarmwait = self.alarmwait - 1
+            self.alarmHandler.Beep() # Beeping will be done in second-intervals, as the redraw every second will disturb the timing of beeping
         # Alarm set and Snooze on
         elif alarmset > 0 && persist.member('snooze') > 0
             # Snooze decrement
@@ -206,7 +194,6 @@ class ClockfaceManager
                 persist.save()
                 self.snoozerunning = 0
                 self.alarmHandler.beepindex = 0
-                self.alarmHandler.beep()
             end
         # Alarm off, but still Snooze active
         elif alarmset == 0 && persist.member('snooze') > 0
@@ -216,17 +203,23 @@ class ClockfaceManager
             persist.save()
         end
 
-        self.update_brightness_from_sensor()
-        self.redraw()
 
 
     end
 
+    def activateSnooze()
+        persist.snooze=1
+        persist.save()
+        self.snoozerunning = self.snoozetime
+        self.alarmHandler.StopBuzzer()
+        self.alarmHandler.beepindex = 0
+    end    
+    
     # This will redraw current face
     def redraw()
         #var start = tasmota.millis()
 
-        self.currentClockFace.render()
+        self.currentClockFace.render() # Dauert 200msec auf der Hauptseite, 100msec auf der Datumseite, 90msec auf der einfachen Datumseite, 110msec auf der Alarmseite - muss optimiert werden
         self.matrixController.draw()
 
         #print("Redraw took", tasmota.millis() - start, "ms")
@@ -234,8 +227,8 @@ class ClockfaceManager
 
     # For updating brightness
     def update_brightness_from_sensor()
-        var sensors = json.load(tasmota.read_sensors());
-        var illuminance = sensors['ANALOG']['Illuminance1'];
+        var sensors = json.load(tasmota.read_sensors()) # kostet 50msec! - auf init verlagern
+        var illuminance = sensors['ANALOG']['Illuminance1']
 
         var brightness = int(10 * math.log(illuminance));
         if brightness < 10
