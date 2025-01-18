@@ -53,3 +53,9 @@ Flashing Tasmota firmware on your device may potentially brick or damage the dev
         #define USE_BUZZER
         #endif
 
+# Branch-Information
+This branch tries to optimize the buzzer-timing, as it is highly irregular in the standard branch.
+
+I did the following changes:
+- There is a own buzzer-implementation based on a fast-loop-driver in berry. The timing of this driver is a little bit better than the Tasmota-command. But it does not help to get a regular beeping.
+- The timing of the buzzer is adapted to the runtime of the every_second-code: The every_second-code will take about 200-300msec to run and will block even the fast-loop in this time. You would have to split it up in tiny pieces and put "tasmota.set_timer()" in between, to give the driver time to work, but this would make the code complicated and the smallest pieces possible will still take ~50msec. I therefore do the rendering first and start then a buzzer-sequence for <700 msec, so this beep-sequence will not get disturbed.
