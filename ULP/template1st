@@ -1,0 +1,8 @@
+"""
+Template for exporting ULP code to Tasmotas Berry implementation
+Just do a cat template1st assemblercode.s template2nd >code.py to generate the py-file
+"""
+from esp32_ulp import src_to_binary
+import ubinascii
+
+source = """
