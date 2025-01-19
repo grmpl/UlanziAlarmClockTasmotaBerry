@@ -1,4 +1,8 @@
-# this program for the ESP32-ULP will run 20 times, it will get the time from the RTC-registers and save it in a list of memory adresses
+# this program for the ESP32-ULP will run 20 times, it will get the cycle count of the RTC_SLOW_CLK from the RTC-registers 
+#  and save it in a list of memory adresses
+# It is just here to test a few basic concepts
+# Result is about 14500 cycles for a sleep of 100msec. Which would mean clock is running with 145kHz instead of 150kHz
+
 
 # from components/soc/esp32/register/soc/reg_base.h
 #define DR_REG_RTCCNTL_BASE                     0x3ff48000
@@ -59,14 +63,35 @@ time_list:
     .long 0
     .long 0
     .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
 
 .text
 .global entry
 entry:
-    # first increment stage counter
+    # first increment stage counter - this counter is preserved over sleep
     STAGE_INC 1
     # jump if stage counter >=20
-    jumps end, 20, GE
+    jumps end, 20, GT
+
 
     # next poke the RTC-controlle to update the time register
     WRITE_RTC_REG(RTC_CNTL_TIME_UPDATE_REG, RTC_CNTL_TIME_UPDATE_S, 1, 1)
@@ -86,7 +111,10 @@ check_time_valid:
     move r1, time_list # get the address of the list into r1
     # the st-command is a little bit tricky, as the adress in the register of st-command is counted in words, whereas offsets are counted in bytes
     # counter cannot be used as offset, as offset is a constant value, so it must be used in register-value, so let us add counter to time_list
+    # add counter to adress of time_list
     add r1, r1, r3
+    # now we want to check if old value still resides in r0 - we haven't used r0 yet 
+    st r0, r1, 8 # this will always result in 1 
     # now adressing is done, we can start reading the RTC-register
     # get the lower 16 bit from the RTC-register into r0
     READ_RTC_REG(RTC_CNTL_TIME0_REG, 0, 16)
@@ -99,7 +127,7 @@ check_time_valid:
 
     # as counter is used in register, we must count words, so increment counter by 2, as wee need two words for each cycle
     # counter is already in r3, so it's easy
-    add r3, r3, 2
+    add r3, r3, 3
     # save the counter
     st r3, r2, 0
     # next loop can come
