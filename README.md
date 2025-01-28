@@ -53,3 +53,5 @@ Flashing Tasmota firmware on your device may potentially brick or damage the dev
         #define USE_BUZZER
         #endif
 
+# Branch information
+This branch tries to solve the inaccurate buzzer timing by an ULP-controlled buzzer. It contains assembler code for the ULP-Coprozessor in subdirectory ULP.

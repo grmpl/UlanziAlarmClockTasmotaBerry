@@ -11,6 +11,13 @@ source = """
 # It is just here to test a few basic concepts
 # Result is about 14500 cycles for a sleep of 100msec. Which would mean clock is running with 145kHz instead of 150kHz
 
+# assembled code: var c = bytes().fromb64("dWxwAAwAcAAAAPgAEAAAdBQABYQUgCiEAwT8HxQAAIADAHgvEABAchQAQIDBAYByBwAA0OEBgHI1AABwBggAaAQAgCcEAABoAgCAcAQAwC8EBABoPwAAcsEBgHIHAABoAAAAsAYAYBzRAYByMAaAcgQAAGgAAEB0AAAAsA==")
+# adresses:
+# 0000 entry
+# 0028 counter
+# 0029 check
+# 0030 time_list
+
 
 # from components/soc/esp32/register/soc/reg_base.h
 #define DR_REG_RTCCNTL_BASE                     0x3ff48000
@@ -28,7 +35,7 @@ source = """
 counter: .long 0
 .global check
 check: .long 0
-# 2x20 words for storing the time
+# 3x20 words for storing the time
 .global time_list
 time_list:
     .long 0
@@ -110,23 +117,26 @@ check_time_valid:
     AND R0, R0, 1
     JUMP check_time_valid, EQ
 
-    # we need our own counter, as stage_cnt cannot be read
-    # get the counter into r3 and its address into r2
-    move r2, counter # get the address of the counter into r2
-    ld r3, r2, 0 # load the counter value into r3
+    # we need our own counter, as stage_cnt cannot be read - there is no instruction to read it
+    # get the counter into r3 and its address into r1
+    move r1, counter # get the address of the counter into r1
+    ld r3, r1, 0 # load the counter value into r3
     
     # r0 is used for reading register, r1 will be used for the memory adressing
     move r1, time_list # get the address of the list into r1
     # the st-command is a little bit tricky, as the adress in the register of st-command is counted in words, whereas offsets are counted in bytes
     # counter cannot be used as offset, as offset is a constant value, so it must be used in register-value, so let us add counter to time_list
+    # add counter to adress of time_list
     add r1, r1, r3
-    # now we want to check if old value still resides in r0 - we haven't used r0 yet 
-    st r0, r1, 8 
-    # now adressing is done, we can start reading the RTC-register
+    # check for value of r2, which we have saved in the last cycle
+    st r2, r1, 8 # result: register is preserved over sleep
+    # read the RTC-register for time
     # get the lower 16 bit from the RTC-register into r0
     READ_RTC_REG(RTC_CNTL_TIME0_REG, 0, 16)
     # then store the value in the list
     st r0, r1, 0
+    # now save it also to r2, to check if it keeps its value over sleep
+    move r2,r0
     # get the higher 16 bit from the RTC-register
     READ_RTC_REG(RTC_CNTL_TIME0_REG, 16, 16)
     # save the value in the list in next word
@@ -135,8 +145,10 @@ check_time_valid:
     # as counter is used in register, we must count words, so increment counter by 2, as wee need two words for each cycle
     # counter is already in r3, so it's easy
     add r3, r3, 3
-    # save the counter
-    st r3, r2, 0
+    # but we have overwritten it's adress
+    move r1, counter
+    st r3, r1, 0
+
     # next loop can come
 
     halt # wait for next cycle

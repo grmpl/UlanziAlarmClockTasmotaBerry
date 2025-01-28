@@ -1,15 +1,9 @@
-# this program for the ESP32-ULP will run 20 times, it will get the cycle count of the RTC_SLOW_CLK from the RTC-registers 
-#  and save it in a list of memory adresses
-# It is just here to test a few basic concepts
-# Result is about 14500 cycles for a sleep of 100msec. Which would mean clock is running with 145kHz instead of 150kHz
+# Check for timing
 
-# assembled code: var c = bytes().fromb64("dWxwAAwAcAAAAPgAEAAAdBQABYQUgCiEAwT8HxQAAIADAHgvEABAchQAQIDBAYByBwAA0OEBgHI1AABwBggAaAQAgCcEAABoAgCAcAQAwC8EBABoPwAAcsEBgHIHAABoAAAAsAYAYBzRAYByMAaAcgQAAGgAAEB0AAAAsA==")
-# adresses:
-# 0000 entry
-# 0028 counter
-# 0029 check
-# 0030 time_list
-
+# check results:
+# for i:1..19
+#  print(i,(ULP.get_mem(40+3*i)-ULP.get_mem(37+3*i))+(ULP.get_mem(41+3*i)-ULP.get_mem(38+3*i))*65536,ULP.get_mem(42+3*i)-ULP.get_mem(40+3*i))
+# end
 
 # from components/soc/esp32/register/soc/reg_base.h
 #define DR_REG_RTCCNTL_BASE                     0x3ff48000
@@ -20,6 +14,7 @@
 #define RTC_CNTL_TIME_UPDATE_REG         (DR_REG_RTCCNTL_BASE + 0xc)
 #define RTC_CNTL_TIME_UPDATE_S  31
 #define RTC_CNTL_TIME_VALID_S  30
+#define RTC_CNTL_STORE1_REG          (DR_REG_RTCCNTL_BASE + 0x50)
 
 .bss
 # one counter
@@ -27,7 +22,7 @@
 counter: .long 0
 .global check
 check: .long 0
-# 3x20 words for storing the time
+# 2x20 words for storing the time
 .global time_list
 time_list:
     .long 0
@@ -90,6 +85,10 @@ time_list:
     .long 0
     .long 0
     .long 0
+.global calibration
+calibration: 
+    .long 0
+    .long 0
 
 .text
 .global entry
@@ -110,9 +109,9 @@ check_time_valid:
     JUMP check_time_valid, EQ
 
     # we need our own counter, as stage_cnt cannot be read - there is no instruction to read it
-    # get the counter into r3 and its address into r1
-    move r1, counter # get the address of the counter into r1
-    ld r3, r1, 0 # load the counter value into r3
+    # get the counter into r3 - loading should be possible with just the r3 register, address will be overwritten by data
+    move r3, counter # get the address of the counter into r3
+    ld r3, r3, 0 # overwrite r3 with counter value
     
     # r0 is used for reading register, r1 will be used for the memory adressing
     move r1, time_list # get the address of the list into r1
@@ -121,23 +120,35 @@ check_time_valid:
     # add counter to adress of time_list
     add r1, r1, r3
     # check for value of r2, which we have saved in the last cycle
-    st r2, r1, 8 # result: register is preserved over sleep
-    # read the RTC-register for time
+    # read time register 
     # get the lower 16 bit from the RTC-register into r0
     READ_RTC_REG(RTC_CNTL_TIME0_REG, 0, 16)
     # then store the value in the list
     st r0, r1, 0
-    # now save it also to r2, to check if it keeps its value over sleep
-    move r2,r0
     # get the higher 16 bit from the RTC-register
     READ_RTC_REG(RTC_CNTL_TIME0_REG, 16, 16)
     # save the value in the list in next word
     st r0, r1, 4 # store the value in next word (we have words, but can only store in lower 16 bits), offset is in bytes, so we need 4 here
+    
+    # check again for time
+    WRITE_RTC_REG(RTC_CNTL_TIME_UPDATE_REG, RTC_CNTL_TIME_UPDATE_S, 1, 1)
+    jump check_time_valid2
+check_time_valid2:
+    /* Check if RTC_CNTL_TIME_VALID bit is 1, otherwise repeat */
+    READ_RTC_REG(RTC_CNTL_TIME_UPDATE_REG, RTC_CNTL_TIME_VALID_S, 1)
+    AND R0, R0, 1
+    JUMP check_time_valid2, EQ
+    
+    # save low value of time
+    READ_RTC_REG(RTC_CNTL_TIME0_REG, 0, 16)
+    st r0, r1, 8
+    # Result: 2 ticks of SLOW_CLK difference
 
     # as counter is used in register, we must count words, so increment counter by 2, as wee need two words for each cycle
     # counter is already in r3, so it's easy
     add r3, r3, 3
-    # but we have overwritten it's adress
+    # but we have overwritten it's adress, so we must load it back
+    #  storing does need two registers to work, it's not possible to store using only one register
     move r1, counter
     st r3, r1, 0
 
@@ -146,6 +157,13 @@ check_time_valid:
     halt # wait for next cycle
 
 end:
+    # read calibration register
+    # current esp-idf stores it in RTC_CNTL_STORE1_REG (named RTC_SLOW_CLK_CAL_REG)
+    move r1, calibration
+    READ_RTC_REG(RTC_CNTL_STORE1_REG, 0, 16)
+    st r0, r1, 0
+    READ_RTC_REG(RTC_CNTL_STORE1_REG, 16, 16)
+    st r0, r1, 4
     # halt the ULP-timer, so it will not run again
     #  Please note: an ULP.run() from Tasmota will autmatically enable the ULP-timer again!
     WRITE_RTC_REG(RTC_CNTL_STATE0_REG, RTC_CNTL_ULP_CP_SLP_TIMER_EN, 1, 0) #disable ULP Sleep-Timer
@@ -159,3 +177,21 @@ end:
     
     stage_rst
     halt
+
+# Result: 146668 ticks difference on SLOW_CLK between runs @sleep=1000000 (1second)
+#  Calibration: 35750 low,54 high = 0x368BA6 = 6.818187713623047 (Q13.19) microsec/tick -> 146666,538 Hz
+#   2 ticks difference due to program runtime 
+#  This is to be expected, as sleep time is calculated from calibration time
+# After restart: 146544 ticks for sleep=1000000
+#  Calibration: 54 high, 38758 low = 6.823925018310547 -> 146543,228027376 Hz
+#
+# Calculate decimal number from Q13.19:
+# import math
+# compl=ULP.get_mem(101)*0x10000+ULP.get_mem(100)
+# sum=0
+# for i:0..18
+# var act=1.0*( (compl & (1<<i))>>i ) * math.pow(2,-19+i)
+# sum=sum+act
+# end
+# print(sum+(compl>>19))
+#   

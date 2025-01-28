@@ -34,7 +34,6 @@ class ClockfaceManager
     var currentClockFace
     var currentClockFaceIdx
     var snoozerunning
-    var alarmwait
 
     static snoozetime=300 # 5 minutes
 
@@ -67,8 +66,6 @@ class ClockfaceManager
         end
         persist.save()
 
-        # Initialize alarmwait
-        self.alarmwait=0
 
         
         # And create a custom Tasmota-Command
@@ -122,13 +119,13 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             # I suspect interference with other redraws, so this is disabled.
-            # self.redraw()
+            self.redraw()
         else
 
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
-            #self.redraw()
+            self.redraw()
         end
     end
 
@@ -140,7 +137,7 @@ class ClockfaceManager
             log("ClockfaceManager: Alarm switched off",2)
             tasmota.cmd("_buzzer 1",true)
             persist.alarmactive=0
-            #self.redraw()
+            self.redraw()
         elif value == 15 # Clear (release of Hold) will never be handled! 
             # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold
         elif  alarmset > 0 && persist.member('snooze') == 0 #if Alarm on, always do Snooze on
@@ -149,7 +146,7 @@ class ClockfaceManager
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
-            #self.redraw()
+            self.redraw()
         else
             var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
             if handleActionMethod != nil
@@ -186,13 +183,10 @@ class ClockfaceManager
         # Check for Alarm
         var alarmset = persist.member('alarmactive')
         # Alarm set and no Snooze, 
-        #  I decided to call AlarmHandler only every 10 seconds. It doesn't improve Beeping-performance, but it's easier to handle
-        if alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait <= 0
+        #  Alarmhandler must take care of buzzing tunes, we will just remind him every second to be active
+        if alarmset > 0 && persist.member('snooze') == 0 
             log("ClockfaceManager: Alarm active, beeping",3)
             self.alarmHandler.beep()
-            self.alarmwait = 9
-        elif alarmset > 0 && persist.member('snooze') == 0 && self.alarmwait > 0
-            self.alarmwait = self.alarmwait - 1
         # Alarm set and Snooze on
         elif alarmset > 0 && persist.member('snooze') > 0
             # Snooze decrement
@@ -205,7 +199,7 @@ class ClockfaceManager
                 persist.snooze = 0
                 persist.save()
                 self.snoozerunning = 0
-                self.alarmHandler.beepindex = 0
+                self.alarmHandler.beepindex = 0 # start from beginning
                 self.alarmHandler.beep()
             end
         # Alarm off, but still Snooze active
