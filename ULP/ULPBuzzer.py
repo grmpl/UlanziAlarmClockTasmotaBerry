@@ -259,7 +259,7 @@ nextsearch:
 # End of cycles 
 exit:
     move r0, returnvalue
-    move r1,99
+    move r1,99 #0x63
     st r1,r0,0
 
     # ensure counter is set to 0
@@ -267,9 +267,9 @@ exit:
     move r1,0
     st r1,r0,0
     # and tune_pointer set to 0x400
-    move r3, 0x400
     move r0, tune_pointer
-    st r3, r1, 0
+    move r3, 0x4000
+    st r3, r0, 0
 
     # switch buzzer off
     WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + BUZZERGPIO, 1, 0)

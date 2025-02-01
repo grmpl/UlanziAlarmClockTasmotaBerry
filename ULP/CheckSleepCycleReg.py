@@ -1,20 +1,5 @@
 """
-Just to check which register is changed by ULP.gpio_init()
-Result: RTC_IO_TOUCH_PAD3_REG is modified by ULP.gpio_init(gpio.pin(gpio.BUZZER),1)
-
-Berry-Commands:
-import ULP
-var c = bytes().fromb64("dWxwAAwAHAAIAAAAJwGwLXEAgHIEAABoKAGwLYEAgHIEAABoAAAAsAAAAAAAAAAA")
-ULP.load(c)
-ULP.run()
-ULP.get_mem(7) # RTC_IO_TOUCH_PAD2_REG (12-28)
-ULP.get_mem(8) # RTC_IO_TOUCH_PAD3_REG (12-28)
-ULP.gpio_init(gpio.pin(gpio.BUZZER),1)
-var c = bytes().fromb64("dWxwAAwAHAAIAAAAJwGwLXEAgHIEAABoKAGwLYEAgHIEAABoAAAAsAAAAAAAAAAA")
-ULP.load(c)
-ULP.run()
-ULP.get_mem(7) # RTC_IO_TOUCH_PAD2_REG (12-28)
-ULP.get_mem(8) # RTC_IO_TOUCH_PAD3_REG (12-28)
+Checking Sleep-Registers 0-1 and calibration
 
 """
 from esp32_ulp import src_to_binary

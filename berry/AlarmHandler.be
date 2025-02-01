@@ -16,11 +16,12 @@ import ULP # try except does not work here, so error must be catched when import
 class AlarmHandler
     # must be set after assembling ULP-code
     static var preparetime=800
+    static var TimerID="timerbeeplist"
     static var CounterAddress=68
     static var TuneAddress=69
     static var ReturnvalueAddress=71
     static var WatchdogAddress=72
-    static var ULPBuzzer="dWxwAAwAEAEUAAAAQASAcgAAANABAGyCAQCAcIAEgHJzPoByAwAAaGAEgHIAAADQAQAFggAAhHIDAIBwAUAFggBAO4I4AEBwXABAgAAF7B0IAEhyVABAgAMAAJJ4AACAAQAAkngAAIAAAewdCABIcnAAQIACAACSeAAAgAAAAJJ4AACAHwDAcowAQIBgBIByAwAAaAAAALADAIRyYASAcgMAAGgVACByQASAcgEAAGgAAACwUASAcgAAANABAAWCAAATggGABYIAgA+CAgCAcDgAQHDQAECAOAAAgB8AwHLEAACAEwCAclwAAIBwBIByMQaAcgEAAGhABIByAQCAcgEAAGgDQIByYASAcgcAAGgAAewdBgBgHAAAALAAAAAAAgAAAABAAAAAAAAAAAAAAA=="
+    static var ULPBuzzer="dWxwAAwAEAEUAAAAQASAcgAAANABAGyCAQCAcIAEgHJzPoByAwAAaGAEgHIAAADQAQAFggAAhHIDAIBwAUAFggBAO4I4AEBwXABAgAAF7B0IAEhyVABAgAMAAJJ4AACAAQAAkngAAIAAAewdCABIcnAAQIACAACSeAAAgAAAAJJ4AACAHwDAcowAQIBgBIByAwAAaAAAALADAIRyYASAcgMAAGgVACByQASAcgEAAGgAAACwUASAcgAAANABAAWCAAATggGABYIAgA+CAgCAcDgAQHDQAECAOAAAgB8AwHLEAACAEwCAclwAAIBwBIByMQaAcgEAAGhABIByAQCAcgEAAGhgBIByAwCEcgMAAGgAAewdBgBgHAAAALAAAAAAAgAAAABAAAAAAAAAAAAAAA=="
 
     # For preventing ULP to run - does not change RTC-GPIO and does not switch GPIO off!
     static var ResetAndDisableULP="dWxwAAwAKAAEAAAABgBgHAYAwC+hAIByBAAAaAAAgHIBAIByAgCAcgMAgHIAAEB0AAAAsAAAAAA="
@@ -41,22 +42,20 @@ class AlarmHandler
     def init()
         self.AlarmRunning=false
         # Try to initialize ULP-buzzer
-        
-        if self.ULPBuzzeravailable
-            # Initialize ULP-Buzzer
-            # first try to get Buzzer-GPIO
-            var rtcgpio
-            try 
-                rtcgpio = ULP.gpio_init(gpio.pin(gpio.BUZZER),1)
-            except .. as err
-                self.ULPBuzzeravailable=false
-                log("Alarmhandler: Can't assign GPIO to RTC, error: "+str(err)+ " falling back to Tasmota buzzer",1)
-            end
-            if rtcgpio != 13
-                self.ULPBuzzeravailable=false
-                log("Alarmhandler: RTCGPIO != 13! RTCGPIO-number of buzzer is hardcoded. Falling back to Tasmota-buzzer",1)
-                # When using another device, ULPBuzzer.S must be modified
-            end
+        self.ULPBuzzeravailable = true
+        # Initialize ULP-Buzzer
+        # first try to get Buzzer-GPIO
+        var rtcgpio
+        try 
+            rtcgpio = ULP.gpio_init(gpio.pin(gpio.BUZZER),1)
+        except .. as err
+            self.ULPBuzzeravailable=false
+            log("Alarmhandler: Can't assign GPIO to RTC, error: "+str(err)+ " falling back to Tasmota buzzer",1)
+        end
+        if rtcgpio != 13
+            self.ULPBuzzeravailable=false
+            log("Alarmhandler: RTCGPIO != 13! RTCGPIO-number of buzzer is hardcoded. Falling back to Tasmota-buzzer",1)
+            # When using another device, ULPBuzzer.S must be modified
         end
 
         if self.ULPBuzzeravailable
@@ -121,12 +120,13 @@ class AlarmHandler
 
     def buzzer_alarmoff(count,ontime,offtime,tune) # single beep, will stop alarm!
         if self.ULPBuzzeravailable
-            self.stopalarm()
-            ULP.load(self.ULPBuzzer)
+            self.stopalarmandbuzzer()
+            var c = bytes().fromb64(self.ULPBuzzer)
+            ULP.load(c)
             ULP.set_mem(self.CounterAddress,count)
             ULP.set_mem(self.TuneAddress, tune & 0x7FFF)
-            ULP.wake_period(0,ontime)
-            ULP.wake_period(1,ontime)
+            ULP.wake_period(0,ontime*1000)
+            ULP.wake_period(1,ontime*1000)
             ULP.run()
         else
             tasmota.cmd("_buzzer "+str(count)+","+str(ontime)+","+str(offtime)+","+str(tune))
@@ -141,8 +141,8 @@ class AlarmHandler
                 if ULP.get_mem(self.WatchdogAddress) != 999
                     ULP.set_mem(self.CounterAddress,60)
                     ULP.set_mem(self.TuneAddress,0x2AAA)
-                    ULP.wake_period(0,100)
-                    ULP.wake_period(1,100)
+                    ULP.wake_period(0,100000)
+                    ULP.wake_period(1,100000)
                     ULP.run()
                 else 
                     ULP.set_mem(self.WatchdogAddress,0)
@@ -152,9 +152,13 @@ class AlarmHandler
         else
             # Initialize alarm
             self.beepindex=0
+            var c = bytes().fromb64(self.ULPBuzzer)
+            ULP.load(c)
+            ULP.set_mem(self.WatchdogAddress,0)
+            self.lastWatchdog=tasmota.millis()
             ULP.set_mem(self.CounterAddress,self.OverallCount+10)
-            ULP.wake_period(0,self.beeplist[self.beepindex][2])
-            ULP.wake_period(1,self.beeplist[self.beepindex][1])
+            ULP.wake_period(0,self.beeplist[self.beepindex][2]*1000)
+            ULP.wake_period(1,self.beeplist[self.beepindex][1]*1000)
             ULP.set_mem(self.TuneAddress,self.beeplist[self.beepindex][3] & 0x7fff)
             ULP.run()
             self.AlarmRunning=true
@@ -163,7 +167,7 @@ class AlarmHandler
             if nextstarttime < 10
                 nextstarttime = 10
             end
-            tasmota.set_timer(nextstarttime,/->self.runbeeplist())
+            tasmota.set_timer(nextstarttime,/->self.runbeeplist(),self.TimerID)
         end
             
 
@@ -172,12 +176,12 @@ class AlarmHandler
     def runbeeplist()
         # get actual timerset from ULP, set wake_period for other set and set new tune with this set 
         if (ULP.get_mem(self.TuneAddress) & 0x8000) == 0
-            ULP.wake_period(0,self.beeplist[self.beepindex][2])
-            ULP.wake_period(1,self.beeplist[self.beepindex][1])
+            ULP.wake_period(0,self.beeplist[self.beepindex][2]*1000)
+            ULP.wake_period(1,self.beeplist[self.beepindex][1]*1000)
             ULP.set_mem(self.TuneAddress,self.beeplist[self.beepindex][3] & 0x7fff)
         else
-            ULP.wake_period(2,self.beeplist[self.beepindex][2])
-            ULP.wake_period(3,self.beeplist[self.beepindex][1])
+            ULP.wake_period(2,self.beeplist[self.beepindex][2]*1000)
+            ULP.wake_period(3,self.beeplist[self.beepindex][1]*1000)
             ULP.set_mem(self.TuneAddress,self.beeplist[self.beepindex][3] | 0x8000)
         end
 
@@ -191,14 +195,15 @@ class AlarmHandler
                 nextstarttime = 10
             end
         
-            tasmota.set_timer(nextstarttime,/->self.runbeeplist())
+            tasmota.set_timer(nextstarttime,/->self.runbeeplist(),self.TimerID)
         else
             self.AlarmRunning=false
             self.beepindex=0
             persist.alarmactive=0
+            persist.save()
             log("AlarmHandler: Timeout Alarm",2)
             tasmota.publish_result("{\"Alarm\":\"Timeout\"}","") # Subtopic doesn't work, therefore empty
-            tasmota.set_timer(self.preparetime,/->self.stopalarmandbuzzer())
+            tasmota.set_timer(self.preparetime,/->self.stopalarmandbuzzer(),self.TimerID)
         end
     end
 
@@ -225,11 +230,17 @@ class AlarmHandler
 
     def stopalarmandbuzzer()
         # stop running beeplist and set beepindex back to 0:
-        # remove timer
+        # STOP TIMER first!!!
+        tasmota.remove_timer(self.TimerID)
+        self.AlarmRunning=false
         self.beepindex=0
+        persist.alarmactive=0
+        persist.save()
+
         
 
-        ULP.load(self.StopULPBuzzer)
+        var c = bytes().fromb64(self.StopULPBuzzer)
+        ULP.load(c)
         ULP.run()
     end
 
