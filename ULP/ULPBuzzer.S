@@ -1,34 +1,54 @@
 # This program will activate the GPIO for the buzzer in regular intervals.
-#  The intervals will be set by sleeptime, so the timing must not be handled here. This program 
-#   just expects to be called in a regular timing.
-#  Sleeptime can be modified any time. A currently running sleep-Timer will be changed to new runtime
-#   without restarting. I.e. changing from 10 to 20 after 9 seconds runtime will lead to additional 11 sec runtime,
+#  The intervals will be set by sleeptime, so the timing must not be handled in this program.
+#   It just expects to be called in a regular timing.
+#
+# Similar to Tasmota buzzer command this program expects a tune-bitmask which defines on and off states
+#  and a counter which defines the repetitions of this tune. 
+#  There is no separate implementation of simple beeps, as these are just simple tunes.
+# The tune-bitmask is different from Tasmota-tune:
+#  1) Only a 16-bit-value is allowed, no 32-bit-value
+#  2) One bit is reserved for selecting sleeptimers
+#  3) So only 15 bits of on/off are possible
+#  3) Trailing 0 will _not_ be ignored - they can be used for pausing in between tunes
+#
+# This program was written to get rid of the inaccurate timing of Tasmota buzzer.
+#  As control of this buzzer command from Tasmota would lead again to timing problems
+#   the possibility of changing tune and timing "on the fly" without disturbing timing
+#   was included:
+#   - Changing the tune will not take immediate effect, but only after current tune is finished
+#     This ensures you don't have to take care of exact timing when to switch the tune.
+#   - One can switch between sleeptimer 0=off/1=on and 2=off/3=on with first bit of tune
+#     This ensures changing the tune and timing is an atomic transaction and cannot be 
+#     disturbed by some freaky timing.
+#   As this program will never change the tune-variable, conflicts of overwritten variables are avoided. 
+#   For changing timing, you just change the unused sleeptimer-pair and switch to it with changing the tune.
+#   I would rather have changed sleeptimer-values directly out of this program, to get even more flexibility,
+#    but as REG_WR accepts only fixed values, it would have been very difficult to realize this.
+#   
+# If any other parameter then tune is changed, the buzzer should be stopped first.
+#  If you do not stop, you have to take great care of timing. Otherwise your changed variable could be 
+#  overwritten by the program or unforeseen side effects due to bad timing could occur.
+#
+# Sleeptimers could be modified any time without risk, but without using tune-change mentioned above,
+#  you will not be able to sync this change with your tune. 
+#  Please note: A currently running sleep-Timer will be changed to new runtime immediately. 
+#   I.e. changing from 10 to 20 after 9 seconds runtime will lead to additional 11 sec runtime,
 #   and changing from 20 to 10 after 15 seconds of runtime will end timer immediately.
-#  As with tasmota buzzer, besides the timing, you can specify the repetitions and a tune.
-# Differences to the tasmota buzzer:
-#  Parameters will be limited to 16 bit, and trailing zeros in tune will not be ignored, 
-#   this will allow for a pause between repetitions.
-# The program will save states like counter and tune-pointer, but these states will be kept in the
-#  shared memory and can be modified any time by the caller. Modifications will just be handled in 
-#  the next cycle. 
-# The caller has to make sure, that modifications to the parameters are not overwritten by this program.
-#  This can be done by checking contents shortly after setting them, as runtime of this program
-#  is short and predictable (<1msec) and sleep time should be >> running time. Or, taking the safe way, 
-#  stopping the program, e.g. by setting and then restarting it with new parameters.
-#  I do not implement a locking mechanism, as there is no infrastructure like an OS providing this in a safe way
-#  and implementing an own solution will generate a lot of additional risks, like deadlocks for example.
+#
 # There are several ways for stopping the program which will have different outcomes. Be sure to choose the right one
 #  - Calling ResetRTCGPIO on ULP - this will stop the buzzer immediately, initialize the memory incl. registers and give the buzzer back to Tasmota
-#     you must call gpio_init again before running BuzzerULP!
+#     Attention: You must call gpio_init again before running BuzzerULP!
 #  - Calling StopULPBuzzer on ULP - this will stop the buzzer immediately and initialize the memory including registers, it will not give the buzzer back to Tasmota
-#     this is the only safe way of starting a new buzzer tune immediately!
-#  - Setting counter to 0: This will stop buzzer in next run, keeping tune_pointer and tune in memory and will not touch registers.
-#     It can take up to sleeptime until buzzer is shut off!
-#     As counter could be modified by program, change of counter must be verified!
-#     Use with care due to possible unforeseen side effects! Only recommended if pausing without reset is required.
-#  - Setting tune to 0: This will stop buzzer in the next run after tune has finished. Counter should be 0, tune_pointer back to 0x8000
+#     This is the only safe way for changing parameters other then tune.
+#  - Setting tune to 0: This will stop buzzer in the next run after tune has finished. 
 #     This is a slow, controlled exit. Runtime is hard to predict and could be very long!
-#     Before starting another buzzer activity, StopULPBuzzer should be called.
+#     Before starting another buzzer activity, additionally StopULPBuzzer should be called.
+#     Useful if you want a "clean" ending of your tune.
+#  - Not recommended: Setting counter to 0: This will stop buzzer in next run, keeping tune_pointer and tune in memory and will not touch registers.
+#     It can take up to sleeptime until buzzer is shut off, so timing is difficult!
+#     You have to make sure, your changed counter is not overwritten accidentally!
+#     Can't think of a usecase for this.
+# 
 # These are the best ways to handle some scenarios:
 #  - Play a buzzing tune, independent of current state: 
 #    1) Stop ULP-Buzzer by running StopULPBuzzer - this would make sure, there are no conflicts with a running buzzer
@@ -76,11 +96,7 @@
 #    5) wait 2msec for current run to end 
 #    6) change sleeptime and tune back to old value - should be enough time until it is read in again.
 # 
-# TBD: Allow for sleep time modification! -> difficult: reg_wr does not allow dynamic values!
-#  if override < 100 (~1msec) && save <> 0 -> save
-#  if override < 100 && save = 0 -> nothing
-#  if override > 100 - save to SENS_ULP_CP_SLEEP_CYC0/1_REG
-# Alternative: use all 4 sleeptimes!!
+# TBD: Implement sleeptimer-change
 
 # from components/soc/esp32/include/soc/soc.h
 #define DR_REG_RTCCNTL_BASE                     0x3ff48000
@@ -108,26 +124,14 @@ tune:
 
 .global tune_pointer
 tune_pointer: 
-    .long 0x8000 # initialized at 1000 0000 0000 0000, handled by the program, but modifiable by the caller
-
-# Section not needed: #################################
-.global timeroverride
-timeroverride: # this will change sleep time in sync with changed tune
-    .long 0 # low bits sleep 0 - offtime
-    .long 0 # high bits sleep 0 - ontime
-    .long 0 # low bits sleep 1 - offtime
-    .long 0 # high bits sleep 1 - ontime
-
-.global timersave
-timersave: # this is to save time if changed
-    .long 0 # low bits sleep 0 - offtime
-    .long 0 # high bits sleep 0 - ontime
-    .long 0 # low bits sleep 1 - offtime
-    .long 0 # high bits sleep 1 - ontime
-# ###############################################
+    .long 0x4000 # initialized at 0100 0000 0000 0000, handled by the program
 
 .global returnvalue
 returnvalue:
+    .long 0
+
+.global watchdog
+watchdog:
     .long 0
 
 .text
@@ -147,35 +151,52 @@ entry:
     # save counter in r1
     move r1, r0 
 
-    # load tune_pointer, tune will only be read at start of tune
+    # save 1 to watchdog
+    move r0, watchdog
+    move r3,999
+    st r3,r0,0
+
+    # load tune_pointer, tune will only be read at start of tune, otherwise it will stay in r2
     move r0, tune_pointer
     ld r0, r0, 0
-    jumpr tune_pointer_regsave, 0, LT # everything all right
-    jumpr tune_pointer_regsave, 0, GT # everything all right
-    move r0, 0x8000 # something went wrong, correct tune_pointer to 0x800
+    jumpr tune_pointer_regsave, 0, GT # tune_pointer can only run from 0x4000 to 0x0001, if tune_pointer <=0 something went wrong
+    move r0, 0x4000 # correct tune_pointer to 0x4000, first bit will always be 0 in tune_pointer
 tune_pointer_regsave:
-    move r3,r0 # store at correct register
+    move r3,r0 # store tune_pointer at correct register
 
     # preceding bits in tune with 0 must be ignored, this will allow to play tunes < 16 bit, too
-    #  So, if we start in tune_pointer from 1000 0000 0000 0000, we proceed until the first 1 is found
-    #  otherwise if tune_pointer is anywhere other than 0x8000, we assume searching was done already
-    # tune_pointer is still at r0
-    jumpr search1, 0x8000, EQ
+    #  So, if we start in tune_pointer from 0100 0000 0000 0000, we proceed until the first 1 is found
+    #  otherwise if tune_pointer is anywhere other than 0x4000, we assume searching was done already
+    # tune_pointer is still at r0, no move necessary
+    jumpr search1, 0x4000, EQ #
 sfound:
     # found first 1, or being in the middle of the tune, so check if switch buzzer on or off
-    # r0 is used for result, as we do not want to overwrite the other registers
+    # tune will be in r2 from previous run or search, we don't reload it!
+    # check for 1 in tune (r2) at tune_pointer (r3), r0 is used for result, as we do not want to overwrite the other registers
     and r0, r2, r3
     jump switchoff, EQ # bit in tune at pointer is 0, we have to jump to Off-routine
 
 switchon:
     # bit is 1, switch buzzer on
     WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + BUZZERGPIO, 1, 1)
+    # determine which sleeptimer to use by checking first bit
+    and r0, r2, 0x8000
+    jump sleeptimer1,EQ # first bit = 0
+    sleep 3 # use 3 with first bit = 1
+    jump halting
+sleeptimer1:
     sleep 1 # choose on-time which must be saved in Sleep-Register 1
     jump halting # subroutine to prepare for next cycle
 
 switchoff:
     # switch buzzer off
     WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + BUZZERGPIO, 1, 0)
+    # determine which sleeptimer to use
+    and r0, r2, 0x8000
+    jump sleeptimer0,EQ # first bit = 0
+    sleep 2 # first bit = 1
+    jump halting
+sleeptimer0:
     sleep 0 # choose off-time which must be saved in Sleep-Register 0
     jump halting # subroutine to prepare for next cycle
 
@@ -183,44 +204,36 @@ switchoff:
 halting:
     # shift tune_pointer to the next bit, if tune_pointer is 0, tune is finished
     #  then we have to decrement counter and set tune_pointer to 0x8000 again
-    rsh r3, r3, 1
-    jump nextcount, EQ
-    # Debugging only ####################
-    # move r0,returnvalue
-    # st r2,r0,0
-    # ###################################
+    # again: do not care about first bit - this will always be 0 in tune_pointer
+    rsh r3, r3, 1 # shift r3
+    jump nextcount, EQ # if 0 we have finished tune
     # otherwise store new tune_pointer and wait for next cycle
     move r0, tune_pointer
-    st r3, r0, 0 
+    st r3, r0, 0 # save
     halt
 
 nextcount:
-    # we do not stop the buzzer! If there is a 1 at the end of tune, buzzer will keep being active until 1st 0 in next tune-cycle
+    # tune_pointer should be 0, set it to beginning - we do not start at already found first 1-bit, as tune could change
+    move r3,0x4000
+    # and store the new value
+    move r0, tune_pointer
+    st r3, r0, 0
+    # we do not stop the buzzer at the end of tune! If there is a 1 at the end of tune, buzzer will keep being active until 1st 0 in next tune-cycle
     # decrement counter - 
     sub r1, r1, 1
     # store the new counter value
     move r0, counter
     st r1, r0, 0
-    # set tune_pointer to beginning
-    # we always start at beginning, as tune could change until next cycle
-    move r3,0x8000
-    # and store the new value
-    move r0, tune_pointer
-    st r3, r0, 0
     halt
 
 
-# Subroutine to find the first 1 in the tune
+# Subroutine to find the first 1 in the tune, we jump with tune_pointer=0x4000 into search1
 search1:
-    # tbd: check for timer-override and save it #########################################################################
-    # Doesn't work: REG_WR does not allow to specify a ULP-register for written data. So we can't modify a register with dynamic values
-    #  there is a hack with writing an reg_wr-instruction into data-section and modifying it externally, but I don't know if this is worth the effort
-    # ###################################################
-
     # Load tune
     move r0, tune
     ld r0, r0, 0 
-    jumpr slowexit, 0, EQ # with tune=0 we will not count down the counter, but it will stop slowly at next cycle
+    jumpr 0tune, 0, EQ # do not start search on tune=0, as this will result in endless loop! Set tune_pointer=0x0001, switch off, set sleep, nextcount
+    jumpr 0tune, 0x8000, EQ # the same for tune=0 with second timerset
     move r2,r0 # otherwise store at correct register
 nextsearch:
     # tune is at r3, tune_pointer at r2, but we do not want to modify them, so use r0 as result of comparison
@@ -230,14 +243,10 @@ nextsearch:
 0found:
     rsh r3, r3, 1 # move tune_pointer to the next bit
     jump nextsearch
-
-slowexit:
-    # just set counter to 0 and wait for next cycle
-    move r1,0
-    move r0, counter
-    st r1, r0, 0
-    sleep 0
-    halt
+    
+0tune:
+    move r3, 0x0001 # we skipped search, so set tune_pointer to last bit
+    jump switchoff
 
 # End of cycles 
 exit:
@@ -245,12 +254,14 @@ exit:
     move r1,99
     st r1,r0,0
 
-    # restore sleeptimers - if I find a way to modify them
-
     # ensure counter is set to 0
     move r0, counter
     move r1,0
     st r1,r0,0
+    # and tune_pointer set to 0x400
+    move r3, 0x400
+    move r0, tune_pointer
+    st r3, r1, 0
 
     # switch buzzer off
     WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + BUZZERGPIO, 1, 0)
