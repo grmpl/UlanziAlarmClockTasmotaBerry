@@ -35,7 +35,7 @@ class ClockfaceManager
     var currentClockFaceIdx
     var snoozerunning
 
-    static snoozetime=300 # 5 minutes
+    static snoozetime=360 # 6 minutes
 
 
     def init()
@@ -59,6 +59,7 @@ class ClockfaceManager
         # Reset Snooze after reinit
         self.snoozerunning = 0
         persist.snooze = 0
+
 
         # Check for AlarmActive and initialize if necessary
         if persist.member('alarmactive') == nil
@@ -136,7 +137,8 @@ class ClockfaceManager
         if alarmset > 0 && value == 3 #Hold will switch off Alarm on all faces
             log("ClockfaceManager: Alarm switched off",2)
             self.alarmHandler.buzzer_alarmoff(1,200,100,2)
-            # persist.alarmactive=0 # should be handled by AlarmHandler
+            persist.alarmactive=0 
+            persist.save()
             self.redraw()
         elif value == 15 # Clear (release of Hold) will never be handled! 
             # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold

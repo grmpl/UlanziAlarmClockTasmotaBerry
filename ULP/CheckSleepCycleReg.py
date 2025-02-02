@@ -1,5 +1,5 @@
 """
-Checking Sleep-Registers 0-1 and calibration
+Checking Sleep-Registers 0-1 and calibration (Sleep in registers is stored in ticks of RTC-SlowClock)
 
 """
 from esp32_ulp import src_to_binary

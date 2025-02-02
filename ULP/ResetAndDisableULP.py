@@ -1,7 +1,7 @@
 """
 This program disables the ULP Sleep-Timer to prevent ULP from running. 
 Additionally it will reset registers, to clean up.
-Data and code of this program will remain in RTC_SLOW-Mem
+Data and code of previous program will be overwritten, this program will remain in RTC_SLOW-Mem even after finish
 
 RTC_CNTL_STATE0_REG-value (high) could be get with ULP.get_mem(10)
 
