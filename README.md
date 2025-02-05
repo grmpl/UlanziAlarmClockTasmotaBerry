@@ -12,7 +12,8 @@ The ULP-Buzzer was introduced, as the berry code is running too long and buzzer-
 ## Installation
 Flashing Tasmota firmware on your device may potentially brick or damage the device. It is important to proceed with caution and to understand the risks involved before attempting to flash the firmware. Please note that any modifications to the device's firmware may void the manufacturer's warranty and may result in permanent damage to the device. It is strongly recommended to thoroughly research the flashing process and to follow instructions carefully. The user assumes all responsibility and risk associated with flashing the firmware.
 
-1. **You must compile Tasmota with ULP-Support for this branch!** You can add RTC-support, too, if you are already compilint. See Additional Information below.
+1. **You must compile Tasmota with ULP-Support for this branch!**  
+You can add RTC-support, too, if you are already compilint. See Additional Information below.
 2. Flash the compiled Tasmota on your Ulanzi TC001.
 3. Set Template and Module according to https://templates.blakadder.com/ulanzi_TC001.html, but set ID=2 on GPIO32.
 4. ~~Set Pixel-Number of the Display in Console: `Pixels 256`~~ (The command works only with ID=1 on GPIO32 with WSD2812, and according to my eperience it is not necessary)
