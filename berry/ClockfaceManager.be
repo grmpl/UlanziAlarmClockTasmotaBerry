@@ -10,6 +10,7 @@ import AlarmHandler
 
 import ClockClockFace
 import DateClockFace
+#import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
 import Alarm3ClockFace
@@ -20,6 +21,8 @@ import Alarm4ClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
+#  there seems to be a problem with high load on this face
+#    WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
     Alarm3ClockFace,
@@ -201,7 +204,7 @@ class ClockfaceManager
                 persist.snooze = 0
                 persist.save()
                 self.snoozerunning = 0
-                self.alarmHandler.beepindex = 0 # start from beginning
+                self.alarmHandler.BeepIndex = 0 # start from beginning
                 self.alarmHandler.alarm()
             end
         # Alarm off, but still Snooze active
