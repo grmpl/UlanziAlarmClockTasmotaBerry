@@ -10,6 +10,7 @@ import AlarmHandler
 
 import ClockClockFace
 import DateClockFace
+import IconClockFace
 #import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
@@ -21,6 +22,7 @@ import Alarm4ClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
+    IconClockFace,
 #  there seems to be a problem with high load on this face
 #    WeatherClockFace, 
     Alarm1ClockFace,

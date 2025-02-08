@@ -116,7 +116,7 @@ class AlarmClockFaceBase: BaseClockFace
                      [nil,clockcolor,clockbackgroundcolor,clockbackgroundcolor,clockbackgroundcolor,clockcolor,nil],
                      [nil,nil,clockcolor,clockcolor,clockcolor,nil,nil]
                     ]
-        self.drawicon(clockicon,0,1)
+        self.drawicon(clockicon,0,0)
 
         if self.alarmstatus & 4
             log("AlarmClockFace: Draw snooze",4)
@@ -142,22 +142,22 @@ class AlarmClockFaceBase: BaseClockFace
 
         if self.timerrepeat == 0
             log("AlarmClockFace: Draw norepeat",4)
-            var repcolor=0xf78818
+            var repcolor=0xffbd3e
             var repicon=[
                          [repcolor],
                          [repcolor],
                          [repcolor]
                          ]
-            self.drawicon(repicon,3,6)
+            self.drawicon(repicon,6,5)
         elif self.timerrepeat == 1
             log("AlarmClockFace: Draw repeat",4)
-            var repcolor=0xf78818
+            var repcolor=0xffbd3e
             var repicon=[
                          [nil,repcolor,nil],
                          [repcolor,nil,repcolor],
                          [nil,repcolor,nil]
                          ]
-            self.drawicon(repicon,2,6)
+            self.drawicon(repicon,5,5)
         end
 
 

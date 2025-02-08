@@ -1,4 +1,5 @@
 import introspect
+import string
 
 class BaseClockFace
     var clockfaceManager
@@ -24,14 +25,187 @@ class BaseClockFace
     end
 
     def loadicon(filename)
-        # Convert images with netpbm-tools.
-        # pngtopam will generate a pam-file when option -alphapam is used
-        # pngtopam without -alphapam and giftopnm will generate a ppm-file 
-        # Read file by line, check for P6/P7 magic number
-        #  P7 : Check Width <=32, Check height <=8, check depth=4, check maxval = 255, check  TUPLTYPE RGB_ALPHA-> reject if not in range
-        #  P6:  Check Width <=32, Check height <=8, check maxval = 255 -> reject if not in range
-        # read image from file into bytes-list: [line1[pixel1(0xRRGGBB),pixel2(0xRRGGBB)],pixel3 nil,line2[...]]
-        #   pixel=nil if alpha <128, meaning don't touch the pixel, leave it as it is -> no gradient supported
+
+        # Icons can be loaded from a pam- or ppm-file with the following structure:
+        # pam:
+        # P7
+        # WIDTH 8
+        # HEIGHT 8
+        # DEPTH 4
+        # MAXVAL 255
+        # TUPLTYPE RGB_ALPHA
+        # ENDHDR
+        # <R G B Alpha values for each pixel, 1 byte per value>
+        # ppm:
+        # P6
+        # 8 8
+        # 255
+        # < R G B values for each pixel, 1 byte per value>
+        # ppm files are created with this format by using pngtopam or giftopnm, pam files are created by using pngtopam with option -alphapam
+        # with Netpbm 11.5.2 on Debian/Ubuntu
+        # The official format definition would allow for more variations of the formatting, but this code requires exactly the given formats
+
+
+        # 
+        var iconfile
+        var iconfilecontent
+        var iconmatrix=[]
+
+
+        try
+            iconfile=open(filename,'rb')
+        except .. as err
+            log("BaseClockFace: Can't open iconfile " + filename + ", error: " + str(err),1)
+            iconfile.close()
+            return nil
+        end
+
+        iconfilecontent=iconfile.readline()
+        if string.startswith(iconfilecontent, 'P7')
+            log("BaseClockFace: PAM file found",4)
+            var width
+            var height
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'WIDTH')
+                width = number(string.split(iconfilecontent," ")[1])
+                if (width < 1) || (width >32)
+                    log("BaseClockFace: Width in iconfile not between 1 and 32",1)
+                    iconfile.close()
+                    return nil
+                end
+            else
+                log("BaseClockFace: Expecting WIDTH in second line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'HEIGHT')
+                height = number(string.split(iconfilecontent," ")[1])
+                if (height < 1) || (height >8)
+                    log("BaseClockFace: Height in iconfile not between 1 and 8",1)
+                    iconfile.close()
+                    return nil
+                end
+            else
+                log("BaseClockFace: Expecting HEIGHT in third line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'DEPTH')
+                var depth = number(string.split(iconfilecontent," ")[1])
+                if depth != 4
+                    log("BaseClockFace: Depth in pam-iconfile must be 4",1)
+                    iconfile.close()
+                    return nil
+                end
+            else
+                log("BaseClockFace: Expecting DEPTH in fourth line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'MAXVAL')
+                var maxval = number(string.split(iconfilecontent," ")[1])
+                if (maxval < 1) || (maxval > 255)
+                    log("BaseClockFace: Maxval not between 1 and 255",1)
+                    iconfile.close()
+                    return nil
+                end
+            else
+                log("BaseClockFace: Expecting MAXVAL in fiveth line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'TUPLTYPE')
+                var tuple = string.split(iconfilecontent," ")[1]
+                if !string.startswith(tuple,'RGB_ALPHA')
+                    log("BaseClockFace: Tupletype in pam-iconfile must be RGB_ALPHA",1)
+                    iconfile.close()
+                    return nil
+                end
+            else
+                log("BaseClockFace: Expecting TUPLETYPE in fiveth line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+            iconfilecontent=iconfile.readline()
+            if string.startswith(iconfilecontent, 'ENDHDR')
+                for line:0..(height-1)
+                    var linelist = []
+                    for pixel:0..(width-1)
+                        iconfilecontent=iconfile.readbytes(4)
+                        if iconfilecontent[3] < 127 # transparency >50%
+                            linelist.push(nil)
+                        else 
+                            linelist.push(iconfilecontent.geti(0,-3))
+                        end
+                    end
+                    iconmatrix.push(linelist)
+                end            
+                iconfile.close()
+                return iconmatrix
+            else
+                log("BaseClockFace: Expecting ENDHDR in sixth line of iconfile",1)
+                iconfile.close()
+                return nil
+            end
+
+        # end of p7-read
+
+        elif string.startswith(iconfilecontent, 'P6')
+            log("BaseClockFace: PPM file found",4)
+            var width
+            var height
+
+            iconfilecontent=iconfile.readline()
+            width = number(string.split(iconfilecontent," ")[0])
+            height = number(string.split(iconfilecontent," ")[1])
+            if (width < 1) || (width >32)
+                log("BaseClockFace: Width in iconfile not between 1 and 32",1)
+                iconfile.close()
+                return nil
+            end
+            if (height < 1) || (height >8)
+                log("BaseClockFace: Height in iconfile not between 1 and 8",1)
+                iconfile.close()
+                return nil
+            end
+
+
+            iconfilecontent=iconfile.readline()
+            var maxval = number(iconfilecontent)
+            if (maxval < 1) || (maxval > 255)
+                log("BaseClockFace: Maxval not between 1 and 255",1)
+                iconfile.close()
+                return nil
+            end
+                
+            for line:0..(height-1)
+                var linelist = []
+                for pixel:0..(width-1)
+                    iconfilecontent=iconfile.readbytes(3)
+                    linelist.push(iconfilecontent.geti(0,-3))
+                end
+                iconmatrix.push(linelist)
+            end            
+            iconfile.close()
+            return iconmatrix
+       
+        else
+            log("BaseClockFace: Not supported file format",4)
+
+        end
+        
+    iconfile.close()
     end
 
     def drawicon(iconlist,offsetx,offsety)
