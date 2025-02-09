@@ -35,6 +35,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - You have multiple displays, which you can choose from by pressing left and right button.
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
 - Next display shows the date. You can switch to big display by pressing the middle button.
+- Next display shows the weather at noon and 6 PM for current day. You have to upload icons in pam- or ppm-format with correct filename into tasmota filesystem for this face. See WeatherClockFace.be. I haven't put the icons on github due to possible license issues.
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.
 - If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be repeated in time. During alarm *any* button press will activate Snooze.
 - Long press on middle button will stop alarm until next timer fires.
