@@ -10,7 +10,7 @@ import AlarmHandler
 
 import ClockClockFace
 import DateClockFace
-import IconClockFace
+#import IconClockFace
 import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
@@ -22,7 +22,7 @@ import Alarm4ClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
-    IconClockFace,
+#    IconClockFace,
     WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
