@@ -200,7 +200,7 @@ class BaseClockFace
             return iconmatrix
        
         else
-            log("BaseClockFace: Not supported file format",4)
+            log("BaseClockFace: Not supported file format",2)
 
         end
         

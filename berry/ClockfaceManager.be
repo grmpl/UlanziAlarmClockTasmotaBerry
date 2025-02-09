@@ -107,7 +107,7 @@ class ClockfaceManager
         if webserver.has_arg("alarmoff")
            persist.alarmactive=0
            persist.save()
-           log("ClockfaceManager: Alarm switched off by Web-Button") 
+           log("ClockfaceManager: Alarm switched off by Web-Button",2) 
         end
     end
 

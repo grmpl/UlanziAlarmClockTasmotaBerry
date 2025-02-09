@@ -164,7 +164,7 @@ class AlarmHandler
                 nextstarttime = 10
             end
             self.TargetTime = tasmota.millis() + nextstarttime
-            log("AlarmHandler: alarm started, runBeepList set timer at "+str(tasmota.millis())+" with targettime "+str(self.TargetTime),3)
+            #log("AlarmHandler: alarm started, runBeepList set timer at "+str(tasmota.millis())+" with targettime "+str(self.TargetTime),3)
             tasmota.set_timer(nextstarttime,/->self.runBeepList(),self.TimerID)
         end
             
@@ -172,7 +172,7 @@ class AlarmHandler
     end
 
     def runBeepList()
-        log("AlarmHandler: runBeepList called at "+str(tasmota.millis())+" with BeepIndex "+str(self.BeepIndex),3)
+        #log("AlarmHandler: runBeepList called at "+str(tasmota.millis())+" with BeepIndex "+str(self.BeepIndex),3)
         
         # We are prepartime before end of current BeepList-tune, PrepareTime was inserted in alarm()
         # ULPBuzzer should play next tune after current tune has finished
@@ -209,7 +209,7 @@ class AlarmHandler
             #   - all must be checked against problems concerning overflow and sign
             #  This is complicated and would need a lot of changes.
         
-            log("AlarmHandler: runBeepList set timer at "+str(tasmota.millis())+" with Targettime: "+str(self.TargetTime),3)
+            #log("AlarmHandler: runBeepList set timer at "+str(tasmota.millis())+" with Targettime: "+str(self.TargetTime),3)
             tasmota.set_timer(nextstarttime,/->self.runBeepList(),self.TimerID)
         else # End reached
             # wait for end of tune and then stop it
