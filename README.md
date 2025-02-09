@@ -29,7 +29,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 
 
 ## Usage
-- Setting alarm time is only possible by setting Tasmota timers. You can set the timers by Web frontend or MQTT.
+- Alarm time is controlled by setting Tasmota timers. You can set the timers by Web frontend, MQTT and on the alarm faces.
 - Timers 1-4 in Tasmota are available for setting an alarm time. Don't forget to activate timers in general and set timers to repeat if you want to use them more than once.
 - Activating and deactivating of timers is possible at the clock.
 - You have multiple displays, which you can choose from by pressing left and right button.
@@ -37,9 +37,9 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Next display shows the date. You can switch to big display by pressing the middle button.
 - Next display shows the weather at noon and 6 PM for current day. You have to upload icons in pam- or ppm-format with correct filename into tasmota filesystem for this face. See WeatherClockFace.be. I haven't put the icons on github due to possible license issues.
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
-Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, changing done by left and right button. Short press of middle butten switches to next value, long press saves new setting. Editing is not performant, quick button presses are not possible, long press/fast change is not implemented. It's just if you don't have your smartphone at hand.
-- If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be repeated in time. During alarm *any* button press will activate Snooze.
-- Long press on middle button will stop alarm until next timer fires.
+Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, it can be changed with left and right button. Short press of middle butten switches to next value, long press saves new timer setting. Don't expect too much. It is not performant, quick button presses are not possible, long press/fast change is not implemented. So you have to be patient. It's for the usecases where you don't have your smartphone at hand.
+- If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be increased in time. During alarm *any* button press on any face will activate Snooze.
+- Long press on middle button on all faces will stop alarm until next timer fires.
 - An additional button on the main web page will give you the possibility to stop an alarm remotely.
 
 
