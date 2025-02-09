@@ -13,10 +13,6 @@ class ClockClockFace: BaseClockFace
         self.weather = Weather()
     end
 
-    def handleActionButton()
-        tasmota.cmd("_buzzer")
-    end
-
     def render()
         self.matrixController.clear()
         var rtc = tasmota.rtc()

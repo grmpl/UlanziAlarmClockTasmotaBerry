@@ -13,7 +13,7 @@ class DateClockFace: BaseClockFace
         self.showYear = true
     end
 
-    def handleActionButton()
+    def handleActionButton(value)
         self.showYear = !self.showYear
     end
 

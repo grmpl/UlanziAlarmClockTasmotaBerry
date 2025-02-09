@@ -18,10 +18,6 @@ class WeatherClockFace: BaseClockFace
         self.weatherfile=["",""]
     end
 
-    def handleActionButton()
-        tasmota.cmd("_buzzer")
-    end
-
     def render()
         self.matrixController.clear()
         var rtc = tasmota.rtc()
@@ -113,12 +109,12 @@ class WeatherClockFace: BaseClockFace
 
     def drawweather(filename,iconnum,xoff)
         if ( self.weatherfile[iconnum] == filename ) && ( self.weathericon[iconnum] != nil )
-            self.drawicon(self.weathericon[iconnum],xoff,0)
+            self.drawicon(self.weathericon[iconnum],xoff,0,40)
         else
             self.weatherfile[iconnum] = filename
             self.weathericon[iconnum] = self.loadicon(filename)
             if self.weathericon[iconnum] != nil
-                self.drawicon(self.weathericon[iconnum],xoff,0)
+                self.drawicon(self.weathericon[iconnum],xoff,0,40)
             else 
                 log("WeatherClockFace: Couldn't load icon " + filename,1)
             end

@@ -10,7 +10,7 @@ import AlarmHandler
 
 import ClockClockFace
 import DateClockFace
-#import IconClockFace
+import IconClockFace
 import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
@@ -22,7 +22,7 @@ import Alarm4ClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
-#    IconClockFace,
+    IconClockFace,
     WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
@@ -38,6 +38,7 @@ class ClockfaceManager
     var currentClockFace
     var currentClockFaceIdx
     var snoozerunning
+    var alarmedit
 
     static snoozetime=360 # 6 minutes
 
@@ -52,6 +53,8 @@ class ClockfaceManager
 
         self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
         self.matrixController.draw()
+
+        self.alarmedit = false
 
         self.currentClockFaceIdx = 0
         self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
@@ -125,6 +128,8 @@ class ClockfaceManager
             self.snoozerunning = self.snoozetime
             # I suspect interference with other redraws, so this is disabled.
             self.redraw()
+        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil )
+                self.currentClockFace.handleEditPrev()
         else
 
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
@@ -156,7 +161,7 @@ class ClockfaceManager
         else
             var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
             if handleActionMethod != nil
-                self.currentClockFace.handleActionButton()
+                self.currentClockFace.handleActionButton(value)
             end
         end
     end
@@ -173,6 +178,8 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
+        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditNext") != nil )
+                self.currentClockFace.handleEditNext()
         else
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
@@ -216,8 +223,10 @@ class ClockfaceManager
             persist.save()
         end
 
-        self.update_brightness_from_sensor()
-        self.redraw()
+        if !self.alarmedit
+            self.update_brightness_from_sensor()
+            self.redraw()
+        end
 
 
     end
