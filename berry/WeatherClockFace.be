@@ -75,83 +75,55 @@ class WeatherClockFace: BaseClockFace
 
         # Display weather icon
             var wmo=wmocode[iconnumber]
-            if wmo == 1 || wmo == 2 || wmo == 3 || wmo == 45 || wmo == 48
+            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 )
+                self.drawweather("beach.pam", iconnumber, xoffset)
+            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 )
+                self.drawweather("beer.pam", iconnumber, xoffset)
+            elif wmo == 1 || wmo == 2 || wmo == 3 || wmo == 45 || wmo == 48
                 # cloudy (1-3) /fog (45,48)
-                if ( self.weatherfile[iconnumber] == "cloudy.pam" ) && ( self.weathericon[iconnumber] != nil )
-                    self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                else
-                    log("WeatherClockFace: weatherfile=" + self.weatherfile[iconnumber] + " weahtericon=" + str(self.weathericon[iconnumber]) + " must load again",4)
-                    self.weatherfile[iconnumber]="cloudy.pam"
-                    self.weathericon[iconnumber] = self.loadicon("cloudy.pam")
-                    if self.weathericon[iconnumber] != nil
-                        self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                    else 
-                        log("WeatherClockFace: Couldn't load icon!",1)
-                    end
-                end                    
+                self.drawweather("cloudy.pam",iconnumber,xoffset)
 
             elif wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
                 wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
-                wmo == 80 || wmo == 81 || wmo == 82 || wmo == 95 || wmo == 96 || wmo == 99
-                # rain, 56,57,66,67 with ice, 95,96,99 thunderstorm
-                if ( self.weatherfile[iconnumber] == "rainy.pam" ) && ( self.weathericon[iconnumber] != nil )
-                    self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                else
-                    self.weatherfile[iconnumber]="rainy.pam"
-                    self.weathericon[iconnumber] = self.loadicon("rainy.pam")
-                    if self.weathericon[iconnumber] != nil
-                        self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                    else 
-                        log("WeatherClockFace: Couldn't load icon!",1)
-                    end
-                end                    
+                wmo == 80 || wmo == 81 || wmo == 82 
+                # rain, 56,57,66,67 with ice
+                self.drawweather("rainy.pam",iconnumber,xoffset)
+            
+            elif wmo == 95 || wmo == 96 || wmo == 99
+                # 95,96,99 thunderstorm
+                self.drawweather("lightning.pam",iconnumber,xoffset)
+
             elif wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86
                 # snow
-                if ( self.weatherfile[iconnumber] == "snowfall.pam" ) && ( self.weathericon[iconnumber] != nil )
-                    self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                else
-                    self.weatherfile[iconnumber]="snowfall.pam"
-                    self.weathericon[iconnumber] = self.loadicon("snowfall.pam")
-                    if self.weathericon[iconnumber] != nil
-                        self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                    else 
-                        log("WeatherClockFace: Couldn't load icon!",1)
-                    end
-                end                    
+                self.drawweather("snowfall.pam",iconnumber,xoffset)
 
-            elif wmo == 0
+            elif wmo == 0 
                 # sunny
-                if ( self.weatherfile[iconnumber] == "sunny.pam" ) && ( self.weathericon[iconnumber] != nil )
-                    self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                else
-                    self.weatherfile[iconnumber]="sunny.pam"
-                    self.weathericon[iconnumber] = self.loadicon("sunny.pam")
-                    if self.weathericon[iconnumber] != nil
-                        self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                    else 
-                        log("WeatherClockFace: Couldn't load icon!",1)
-                    end
-                end                    
+                self.drawweather("sunny.pam",iconnumber,xoffset)
 
             else
                 # unknown
-                if ( self.weatherfile[iconnumber] == "unknown.pam" ) && ( self.weathericon[iconnumber] != nil )
-                    self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                else
-                    self.weatherfile[iconnumber]="unknown.pam"
-                    self.weathericon[iconnumber] = self.loadicon("unknown.pam")
-                    if self.weathericon[iconnumber] != nil
-                        self.drawicon(self.weathericon[iconnumber],xoffset,0)
-                    else 
-                        log("WeatherClockFace: Couldn't load icon!",1)
-                    end
-                end                    
+                self.drawweather("unknown.pam",iconnumber,xoffset)
             end
         end
     
         
     end
 
+
+    def drawweather(filename,iconnum,xoff)
+        if ( self.weatherfile[iconnum] == filename ) && ( self.weathericon[iconnum] != nil )
+            self.drawicon(self.weathericon[iconnum],xoff,0)
+        else
+            self.weatherfile[iconnum] = filename
+            self.weathericon[iconnum] = self.loadicon(filename)
+            if self.weathericon[iconnum] != nil
+                self.drawicon(self.weathericon[iconnum],xoff,0)
+            else 
+                log("WeatherClockFace: Couldn't load icon " + filename,1)
+            end
+        end
+    end
 end
 
 return WeatherClockFace
