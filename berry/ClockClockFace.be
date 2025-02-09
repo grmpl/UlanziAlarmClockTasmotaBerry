@@ -19,7 +19,7 @@ class ClockClockFace: BaseClockFace
 
         var hour_str = tasmota.strftime('%H', rtc['local'])
         var minute_str = tasmota.strftime('%M', rtc['local'])
-        var y_offset = 0
+        var y_offset = 1
         var hx_offset = 0
         var mx_offset = hx_offset+12
         

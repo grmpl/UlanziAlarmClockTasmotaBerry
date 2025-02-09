@@ -31,11 +31,21 @@ class WeatherClockFace: BaseClockFace
 
 
         #var temp_color=0xff00a0
+        if persist.member('snooze') == 1  # Snooze indicator
+            self.matrixController.set_matrix_pixel_color(31, 0, 0x0000ff,self.clockfaceManager.brightness)
+        end
+
         var forecastresult = self.weather.get_forecast()
         if forecastresult != nil 
             
-            wmocode = [forecastresult['weather_code'][4],forecastresult['weather_code'][6]]
-            temp = [forecastresult['temperature_2m'][4],forecastresult['temperature_2m'][6]]
+            if tasmota.time_dump(tasmota.rtc()['utc'])['hour'] < 18
+                wmocode = [forecastresult['weather_code'][4],forecastresult['weather_code'][6]]
+                temp = [forecastresult['temperature_2m'][4],forecastresult['temperature_2m'][6]]
+            else
+                wmocode = [forecastresult['weather_code'][12],forecastresult['weather_code'][14]]
+                temp = [forecastresult['temperature_2m'][12],forecastresult['temperature_2m'][14]]
+            end
+
             if temp[0] != nil
                 if temp[0] < 0
                    temp[0] = temp[0] * -1

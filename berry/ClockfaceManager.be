@@ -39,6 +39,7 @@ class ClockfaceManager
     var currentClockFaceIdx
     var snoozerunning
     var alarmedit
+    var lastredraw
 
     static snoozetime=360 # 6 minutes
 
@@ -47,6 +48,7 @@ class ClockfaceManager
         log("ClockfaceManager Init",3);
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
+        self.lastredraw=0
 
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -223,7 +225,7 @@ class ClockfaceManager
             persist.save()
         end
 
-        if !self.alarmedit
+        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # Only update if no alarmedit and 500msec since last redraw
             self.update_brightness_from_sensor()
             self.redraw()
         end
@@ -233,12 +235,11 @@ class ClockfaceManager
 
     # This will redraw current face
     def redraw()
-        #var start = tasmota.millis()
 
         self.currentClockFace.render()
         self.matrixController.draw()
+        self.lastredraw=tasmota.millis()
 
-        #print("Redraw took", tasmota.millis() - start, "ms")
     end
 
     # For updating brightness
