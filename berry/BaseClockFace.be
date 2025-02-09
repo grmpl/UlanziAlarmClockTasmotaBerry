@@ -56,7 +56,6 @@ class BaseClockFace
             iconfile=open(filename,'rb')
         except .. as err
             log("BaseClockFace: Can't open iconfile " + filename + ", error: " + str(err),1)
-            iconfile.close()
             return nil
         end
 
@@ -215,13 +214,20 @@ class BaseClockFace
         # byte array could be static var, possibly coded into base64
         var x
         var y
+        var brightness
         x=offsetx
         y=offsety
+        # low brightness does not work for icons, colors will fade away
+        if self.clockfaceManager.brightness < 40
+            brightness = 40
+        else
+            brightness = self.clockfaceManager.brightness
+        end
         for line:iconlist[0..]
             if line != nil
                 for pixel:line[0..]
                     if pixel != nil
-                        self.matrixController.set_matrix_pixel_color(x, y, pixel,self.clockfaceManager.brightness)
+                        self.matrixController.set_matrix_pixel_color(x, y, pixel,brightness)
                     end
                     x += 1 #also with pixel=nil
                 end

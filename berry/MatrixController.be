@@ -144,6 +144,7 @@ class MatrixController
        var g = tasmota.scale_uint(bri, 0, 100, 0, (rgbw & 0x00FF00) >> 8)
        var b = tasmota.scale_uint(bri, 0, 100, 0, (rgbw & 0x0000FF))
 
+
        return light.gamma8(r) << 16 |
               light.gamma8(g) <<  8 |
               light.gamma8(b)

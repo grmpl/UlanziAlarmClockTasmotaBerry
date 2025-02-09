@@ -29,6 +29,7 @@ class Weather
             end
         end
 
+        log("Weather: Cache outdated getting weather",4)
         var r = self.cl.GET()
         self.last_update_time = tasmota.rtc()['local']
         if r == 200
@@ -41,11 +42,12 @@ class Weather
 
     def get_forecast()
         if self.forecast_cache != nil
-            if self.last_update_time + 600 > tasmota.rtc()['local']
+            if self.last_update_time_f + 600 > tasmota.rtc()['local']
                 return self.forecast_cache['hourly']
             end
         end
 
+        log("Weather: Cache outdated getting forecast",4)
         var url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(self.latitude) + "&longitude=" + str(self.longitude) + "&hourly=temperature_2m,weather_code&timezone=Europe%2FBerlin&temporal_resolution=hourly_3&forecast_days=1"
         self.cl.begin(url)
         var r = self.cl.GET()
