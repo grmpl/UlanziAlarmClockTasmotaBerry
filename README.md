@@ -25,7 +25,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 10. Check if Scripts are working correctly by running the commands in autoexec.be manually.
 11. Add the following rule to tasmota: `ON Clock#Timer=1 DO AlarmActivate 1 ENDON ON Clock#Timer=2 DO AlarmActivate 2 ENDON ON Clock#Timer=3 DO AlarmActivate 3 ENDON  ON Clock#Timer=4 DO AlarmActivate 4 ENDON ` 
 12. If everything works, upload autoexec.be from root directory.
-13. I would recommend `setoption1 0`, to avoid blackouts and resets by impatient buttonnpresses. You have serial access, so you don't need these rest functions.
+13. I would recommend `setoption1 0` to avoid blackouts and resets by impatient button presses. You have serial access, so you don't need these reset functions.
 
 
 ## Usage
