@@ -60,14 +60,13 @@ class AlarmHandler
 
         if self.ULPBuzzeravailable
 
-            # Disable ULP-wakeup, as we do not need it yet (code available from ResetAndDisableULP.py)
-            #  this is redundant, as current implementation of ULPBuzzer also will prevent starting by setting counter=0.
-            var c = bytes().fromb64(self.ResetAndDisableULP)
+            # Stop any running buzzer possibly left over from previous runs
+            var c = bytes().fromb64(self.StopULPBuzzer)
             ULP.load(c)
             ULP.run()
 
             # then load code (available from assembling ULPBuzzer.S)
-            #  as long as run is not called, program will not run
+            #  redundant, as all starting methods will do this again. As long as run is not called, program will not run
             c = bytes().fromb64(self.ULPBuzzer)
             try
                ULP.load(c)
