@@ -40,8 +40,10 @@ class ClockfaceManager
     var snoozerunning
     var alarmedit
     var lastredraw
+    var buttonholddone # necessary to ignore clear-values of button after hold-action was done
 
     static snoozetime=360 # 6 minutes
+    static buttonholdtimerID="buttonhold"
 
 
     def init()
@@ -49,6 +51,7 @@ class ClockfaceManager
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
         self.lastredraw=0
+        self.buttonholddone=false
 
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -115,30 +118,27 @@ class ClockfaceManager
     end
 
 
-    # React on Button action
-    # Button-action: 10=Single, 11=Double, 12=Triple, 3=Hold, 15:Clean (Release)
+    # React on Button action, 
+    # Button-action if setoption13=0: 10=Single, 11=Double, 12=Triple, 3=Hold, 15:Clear (Release)
+    # Button-action if setoption13=1: 10=Single, 15:Clean (Release)
 
     def on_button_prev(value, trigger, msg)
-        # print(value)
-        # print(trigger)
-        # print(msg)
         # If Alarm is active and no Snooze, activate Snooze, do nothing
+        var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("Snooze activated by button_prev",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
-            # I suspect interference with other redraws, so this is disabled.
             self.redraw()
-        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil )
-                self.currentClockFace.handleEditPrev()
-        else
-
+        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil ) # during alarmedit handling is done by AlarmClockface
+                self.currentClockFace.handleEditPrev(value)
+        elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
-
             self.redraw()
+        # else ignore Clean with setoption13=1, ignore Hold with setoption13=0
         end
     end
 
@@ -146,22 +146,29 @@ class ClockfaceManager
                
         # If Alarm is active handle button different
         var alarmset = persist.member('alarmactive')
-        if alarmset > 0 && value == 3 #Hold will switch off Alarm on all faces
-            log("ClockfaceManager: Alarm switched off",2)
-            self.alarmHandler.buzzer_alarmoff(1,200,100,2)
-            persist.alarmactive=0 
-            persist.save()
-            self.redraw()
-        elif value == 15 # Clear (release of Hold) will never be handled! 
-            # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold
-        elif  alarmset > 0 && persist.member('snooze') == 0 #if Alarm on, always do Snooze on
+        var so13 = tasmota.get_option(13)
+        var holdtime = ( tasmota.get_option(32) * 100 ) # setoption32 defines hold time in factors of 100msec
+        if self.buttonholddone && value == 15 # Clear after action for hold is completely ignored.
+            self.buttonholddone=false
+        elif ( alarmset > 0 ) && ( ( so13 == 0 ) && ( value == 3 ) ) #with setoption13=0 react on hold if alarm is active
+            log("ClockfaceManager: Alarm switched off by button",2)
+            self.stopalarm()
+        elif ( alarmset > 0 ) && ( so13 == 1 ) && ( value  == 10 ) # with setoption13=1 every single-action will trigger hold function in future
+            tasmota.set_timer(holdtime,/->self.stopalarm(),self.buttonholdtimerID)
+        elif ( alarmset > 0 ) && ( persist.member('snooze') == 0 ) #if alarm active and no snooze yet, every other action will activate snooze, this includes clear with setoption13=1 if hold-action was not performed yet
             log("ClockfaceManager: Snooze activated by button_action",2)
+            if so13 == 1 #Remove holdtimer if it is still set (i.e. if hold time was not reached); there is no possibility to check for timer
+                tasmota.remove_timer(self.buttonholdtimerID)
+            end
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
-        else
+        else # if no alarm is active, we hand it completely over to clockface; if alarm is running and snooze already active, it will not be completely handed over: single action will be lost with setoption13=1
+            if so13 == 1 #If there is a hold timer still running, remove it before handing over to clockface
+                tasmota.remove_timer(self.buttonholdtimerID)
+            end
             var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
             if handleActionMethod != nil
                 self.currentClockFace.handleActionButton(value)
@@ -174,6 +181,7 @@ class ClockfaceManager
         # print(trigger)
         # print(msg)
         # If Alarm is active and no Snooze, activate Snooze
+        var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("ClockfaceManager: Snooze activated by button_next",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
@@ -182,12 +190,13 @@ class ClockfaceManager
             self.snoozerunning = self.snoozetime
             self.redraw()
         elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditNext") != nil )
-                self.currentClockFace.handleEditNext()
-        else
+                self.currentClockFace.handleEditNext(value)
+        elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only Single, with setoption13=0 use Clean on hold and all other values
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
             self.redraw()
+        # else do nothing - ignore Clean with setoption13=1, ignore Hold with setoption13=0
         end
     end
 
@@ -232,6 +241,14 @@ class ClockfaceManager
         end
 
 
+    end
+
+    def stopalarm()
+        self.alarmHandler.buzzer_alarmoff(1,200,100,2)
+        persist.alarmactive=0 
+        persist.save()
+        self.redraw()
+        self.buttonholddone=true
     end
 
     # This will redraw current face

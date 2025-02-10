@@ -10,12 +10,14 @@ class AlarmClockFaceBase: BaseClockFace
     var EditHour
     var EditMinute
     var EditRepeat
+    var ButtonHoldDone # we have to remember an already done hold action, so that following clear can be ignored
     
 
 
     static alarmnumber = 0
     static timexoffset = 8
     static timeyoffset = 1
+    static buttonholdtimerID="buttonhold" # kept the same on all faces, so any timer will be removed
 
 
     def init(clockfaceManager)
@@ -25,6 +27,7 @@ class AlarmClockFaceBase: BaseClockFace
         self.EditMinute=99
         self.EditHour=99
         self.EditRepeat=99
+        self.ButtonHoldDone=false
 
                 
         self.timerstr = "Timer" + str(self.alarmnumber)
@@ -57,34 +60,148 @@ class AlarmClockFaceBase: BaseClockFace
     end
 
     def handleActionButton(value)
-        if value != 3 && !self.clockfaceManager.alarmedit
-            var enable = tasmota.cmd("_"+self.timerstr,true)[self.timerstr]['Enable']
-            self.alarmstatus=self.alarmstatus ^ 1
-            tasmota.cmd("_"+self.timerstr+" {\"Enable\":" + str((self.alarmstatus & 1)) + "}",true)
-            log("AlarmClockFace: Set timer inactive",2)
-            self.clockfaceManager.update_brightness_from_sensor()
-            self.clockfaceManager.redraw()
-        elif value != 3
+        var so13 = tasmota.get_option(13)
+        var holdtime = ( tasmota.get_option(32) * 100 )
+        if self.ButtonHoldDone && value == 15 # clear after hold-action can be completely ignored
+            self.ButtonHoldDone=false
+        elif !self.clockfaceManager.alarmedit &&  ( value == 10 ) && ( so13 == 0 )   # setoption13=0: react on single only 
+            self.switchenable()
+        elif !self.clockfaceManager.alarmedit && ( so13 == 1) && ( value == 15 )  # setoption13=1: react on clear - clear after hold is ignored already 
+            tasmota.remove_timer(self.buttonholdtimerID)
+            self.switchenable()
+        elif self.clockfaceManager.alarmedit && ( value == 10 ) && ( so13 == 0 )   # single click while edit active will change filed
             self.EditField = (self.EditField + 1) % 3
             self.clockfaceManager.redraw()
-
-        elif self.clockfaceManager.alarmedit # long press ends editing
-            tasmota.cmd("_"+self.timerstr+" {\"Repeat\":" + str(self.EditRepeat) + "}",true)
-            tasmota.cmd("_"+self.timerstr+" {\"Time\":\"" + format("%02i:%02i",self.EditHour, self.EditMinute) + "\"}",true)
-            self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
-            self.clockfaceManager.alarmedit = false
+        elif self.clockfaceManager.alarmedit && ( so13 == 1) && ( value == 15 ) # same for setopton13=1, acting on clear
+            tasmota.remove_timer(self.buttonholdtimerID)
+            self.EditField = (self.EditField + 1) % 3
             self.clockfaceManager.redraw()
-        else # long press starts editing
-            self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
-            self.clockfaceManager.alarmedit = true
-            self.EditField=0
-            self.EditHour=99
-            self.EditMinute=99
-            self.EditRepeat=99
-            self.clockfaceManager.redraw()
+        elif self.clockfaceManager.alarmedit && ( ( value == 3 ) && ( so13 == 0 ) )# long press ends editing
+            self.endedit()
+        elif self.clockfaceManager.alarmedit && ( ( value == 10 ) && ( so13 == 1 ) ) # for setoption13=1 all single-actions will start timer for hold-action
+            tasmota.set_timer(holdtime,/->self.endedit(),self.buttonholdtimerID)
+        elif !self.clockfaceManager.alarmedit && ( ( value == 3 ) && ( so13 == 0 ) )# long press starts editing
+            self.startedit()
+        elif !self.clockfaceManager.alarmedit && ( ( value == 10 ) && ( so13 == 1 ) ) # for setoption13=1 all single-actions will start timer for hold-action
+            tasmota.set_timer(holdtime,/->self.startedit(),self.buttonholdtimerID)
+        elif self.ButtonHoldDone #Reset buttonholddone every time not matched
+            self.ButtonHoldDone = false
         end
         
     end
+
+
+    def switchenable()
+        self.alarmstatus=self.alarmstatus ^ 1 # should be updated every second, so we don't read it again
+        tasmota.cmd("_"+self.timerstr+" {\"Enable\":" + str((self.alarmstatus & 1)) + "}",true)
+        log("AlarmClockFace: Switched timer active/inactive by button",2)
+        self.clockfaceManager.redraw()
+    end
+
+    def startedit()
+        self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
+        self.clockfaceManager.alarmedit = true
+        self.EditField=0
+        self.EditHour=99
+        self.EditMinute=99
+        self.EditRepeat=99
+        self.clockfaceManager.redraw()
+        self.ButtonHoldDone=true # ignore following clear actions
+    end
+
+    def endedit()
+        tasmota.cmd("_"+self.timerstr+" {\"Repeat\":" + str(self.EditRepeat) + "}",true)
+        tasmota.cmd("_"+self.timerstr+" {\"Time\":\"" + format("%02i:%02i",self.EditHour, self.EditMinute) + "\"}",true)
+        self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
+        self.clockfaceManager.alarmedit = false
+        self.clockfaceManager.redraw()
+        self.ButtonHoldDone=true # ignore following clear actions
+    end
+
+    def handleEditPrev(value)
+        if value == 15 # just ignore all clears, as we don't use long presses with prev/next, we don't have to wait for holdtime
+            return
+        end
+        if self.EditField == 0
+            self.EditHour = (self.EditHour - 1)
+            if self.EditHour == -1
+                self.EditHour = 23
+            end
+            # Redraw only hour
+            for i:self.timexoffset..self.timexoffset+9
+                for j:self.timeyoffset..self.timeyoffset+6
+                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
+                end
+            end
+            self.matrixController.print_string(format("%02i",self.EditHour), self.timexoffset, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
+            self.matrixController.draw()
+ 
+        elif self.EditField == 1
+            self.EditMinute = (self.EditMinute - 1)
+            if self.EditMinute == -1
+                self.EditMinute = 59
+            end
+            # Redraw only minute
+            for i:self.timexoffset+15..self.timexoffset+24
+                for j:self.timeyoffset..self.timeyoffset+6
+                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
+                end
+            end
+            self.matrixController.print_string(format("%02i",self.EditMinute), self.timexoffset+15, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
+            self.matrixController.draw()
+ 
+        else 
+            self.EditRepeat = self.EditRepeat + 1 
+            if self.EditRepeat == 2
+                self.EditRepeat = 0
+            end
+        self.clockfaceManager.redraw()
+        end
+        #self.clockfaceManager.redraw()
+     
+
+    end
+
+    def handleEditNext(value)
+        if value == 15 # just ignore all clears, as we don't use long presses with prev/next, we don't have to wait for holdtime to distinguish
+            return
+        end
+        if self.EditField == 0
+            self.EditHour = (self.EditHour + 1)
+            if self.EditHour == 24
+                self.EditHour = 0
+            end
+            # Redraw only hour
+            for i:self.timexoffset..self.timexoffset+9
+                for j:self.timeyoffset..self.timeyoffset+6
+                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
+                end
+            end
+            self.matrixController.print_string(format("%02i",self.EditHour), self.timexoffset, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
+            self.matrixController.draw()
+        
+        elif self.EditField == 1
+            self.EditMinute = (self.EditMinute + 1)
+            if self.EditMinute == 60
+                self.EditMinute = 0
+            end
+            # Redraw only minute
+            for i:self.timexoffset+15..self.timexoffset+24
+                for j:self.timeyoffset..self.timeyoffset+6
+                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
+                end
+            end
+            self.matrixController.print_string(format("%02i",self.EditMinute), self.timexoffset+15, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
+            self.matrixController.draw()
+        else 
+            self.EditRepeat = self.EditRepeat + 1 
+            if self.EditRepeat == 2
+                self.EditRepeat = 0
+            end
+        end
+        self.clockfaceManager.redraw()
+    end
+
 
     def render()
         self.matrixController.clear()
@@ -231,84 +348,6 @@ class AlarmClockFaceBase: BaseClockFace
                          ]
             self.drawicon(repicon,5,5,10)
         end
-    end
-
-    def handleEditPrev()
-        if self.EditField == 0
-            self.EditHour = (self.EditHour - 1)
-            if self.EditHour == -1
-                self.EditHour = 23
-            end
-            # Redraw only hour
-            for i:self.timexoffset..self.timexoffset+9
-                for j:self.timeyoffset..self.timeyoffset+6
-                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
-                end
-            end
-            self.matrixController.print_string(format("%02i",self.EditHour), self.timexoffset, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
-            self.matrixController.draw()
- 
-        elif self.EditField == 1
-            self.EditMinute = (self.EditMinute - 1)
-            if self.EditMinute == -1
-                self.EditMinute = 59
-            end
-            # Redraw only minute
-            for i:self.timexoffset+15..self.timexoffset+24
-                for j:self.timeyoffset..self.timeyoffset+6
-                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
-                end
-            end
-            self.matrixController.print_string(format("%02i",self.EditMinute), self.timexoffset+15, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
-            self.matrixController.draw()
- 
-        else 
-            self.EditRepeat = self.EditRepeat + 1 
-            if self.EditRepeat == 2
-                self.EditRepeat = 0
-            end
-        self.clockfaceManager.redraw()
-        end
-        #self.clockfaceManager.redraw()
-     
-
-    end
-
-    def handleEditNext()
-        if self.EditField == 0
-            self.EditHour = (self.EditHour + 1)
-            if self.EditHour == 24
-                self.EditHour = 0
-            end
-            # Redraw only hour
-            for i:self.timexoffset..self.timexoffset+9
-                for j:self.timeyoffset..self.timeyoffset+6
-                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
-                end
-            end
-            self.matrixController.print_string(format("%02i",self.EditHour), self.timexoffset, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
-            self.matrixController.draw()
-        
-        elif self.EditField == 1
-            self.EditMinute = (self.EditMinute + 1)
-            if self.EditMinute == 60
-                self.EditMinute = 0
-            end
-            # Redraw only minute
-            for i:self.timexoffset+15..self.timexoffset+24
-                for j:self.timeyoffset..self.timeyoffset+6
-                    self.matrixController.set_matrix_pixel_color(i,j,0,0)
-                end
-            end
-            self.matrixController.print_string(format("%02i",self.EditMinute), self.timexoffset+15, self.timeyoffset, false, (self.clockfaceManager.color ^ 0x00ffffff ), self.clockfaceManager.brightness)
-            self.matrixController.draw()
-        else 
-            self.EditRepeat = self.EditRepeat + 1 
-            if self.EditRepeat == 2
-                self.EditRepeat = 0
-            end
-        end
-        self.clockfaceManager.redraw()
     end
 
 

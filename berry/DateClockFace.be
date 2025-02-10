@@ -15,7 +15,10 @@ class DateClockFace: BaseClockFace
     end
 
     def handleActionButton(value)
-        self.showYear = !self.showYear
+        var so13 = tasmota.get_option(13)
+        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
+            self.showYear = !self.showYear
+        end
     end
 
     def render()

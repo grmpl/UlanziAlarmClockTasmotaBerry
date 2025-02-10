@@ -25,7 +25,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 10. Check if Scripts are working correctly by running the commands in autoexec.be manually.
 11. Add the following rule to tasmota: `ON Clock#Timer=1 DO AlarmActivate 1 ENDON ON Clock#Timer=2 DO AlarmActivate 2 ENDON ON Clock#Timer=3 DO AlarmActivate 3 ENDON  ON Clock#Timer=4 DO AlarmActivate 4 ENDON ` 
 12. If everything works, upload autoexec.be from root directory.
-13. I would recommend `setoption1 0` to avoid blackouts and resets by impatient button presses. You have serial access, so you don't need these reset functions.
+13. I would recommend `setoption13 1`, this would make the buttons a lot more responsive. Long press functions are handled by the code even with this option set. Nevertheless the code is written to support `setoption13 0`,too.
 
 
 ## Usage
@@ -44,6 +44,7 @@ Editing of alarm is possible by long press of middle button. The value to be cha
 
 
 ## Additional information
+- `setoption13 1` will not allow for multipress and safety actions like reset by very long press or switch Wifi by 6x-press. As there is easy serial access to the clock, I don't think these safety actions are necessary. If you want to keep the safety actions, you have to use `setoption13 0` which will result in laggy button reaction as system always has to wait some time to determine if it is a multiple press. Be aware that impatient button usage my lead to unwanted reset or wifi switch in this case.  
 - You can set a rule which will fire a MQTT-message or anything like that in case a Timer is triggered and the ClockfaceManager is not working: `ON INPUT=AlarmActivate DO var6 99 ENDON ON COMMAND=UNKNOWN DO IF ( var6 == 99 ) var7 ALARM; var6 0 ELSE var6 0 ENDIF ENDON`. (Maybe it could be written in a better way, the problem is: The alarm must only go on, if the error is an unknown command "AlarmActivate" - the corresponding JSON is `{"Command":"Unknown","Input":"ALARMACTIVATE"}`)
 - Concerning compiling: TasmoCompiler worked for me best. It created a small and very stable build. I experienced many WIFI reconnects on the Ulanzi with the official tasmota32.bin, even when the ClockfaceManager wasn't running (especially during file upload). My user_config_override.h created from scratch wasn't much better. With TasmoCompiler I could stick to the bare necessities: Rules, WS2812 LEDs, Temp/Hum sensors, SD Card/Little FS, Timers, Light sensors, Berry scripting, ULP-support and Web interface. I even added telegram and ping. As neither RTC nor ULP is included in any feature group and buzzer is included in feature group LVGL (which we don't need) you have to use custom parameters:
 ```    
