@@ -108,6 +108,7 @@ class ClockfaceManager
        #print(webserver.arg_size(), webserver.arg_name(0),webserver.arg(0),webserver.arg_name(1),webserver.arg(1),webserver.arg_name(2),webserver.arg(2))
         if webserver.has_arg("alarmoff")
            persist.alarmactive=0
+           self.alarmHandler.buzzer_alarmoff(1,50,100,2)
            persist.save()
            log("ClockfaceManager: Alarm switched off by Web-Button",2) 
         end
