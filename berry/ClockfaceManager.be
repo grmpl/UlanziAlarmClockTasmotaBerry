@@ -43,8 +43,8 @@ class ClockfaceManager
     var lastredraw # introduced to avoid unnecessary redraws in short time
     var buttonholddone # necessary to ignore clear-values of button after hold-action was done
     var energysaveoverride # override energy saving mode with button action
-    var debounceulowerbrightness
-    var debounceuenergysaveface
+    var energysaveClockfaceActive
+    var lowerbrightnessActive
 
     static snoozetime=360 # 6 minutes
     static buttonholdtimerID="buttonhold"
@@ -57,8 +57,8 @@ class ClockfaceManager
         self.lastredraw=0
         self.buttonholddone=false
         self.energysaveoverride=tasmota.millis()
-        self.debounceuenergysaveface = 0
-        self.debounceulowerbrightness = 0
+        self.energysaveClockfaceActive = false
+        self.lowerbrightnessActive = false
 
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -273,34 +273,50 @@ class ClockfaceManager
     # For updating brightness and setting energy saving modes
     def update_brightness_from_sensor()
         var waitoverride = 60000 # 1 Minute override after button press
-        var ulowerbrightness = 2810 # voltage level to lower brightness
-        var uenergysaveface = 2790 # voltage level to switch to EnergysaveClockFace
+        var ulowerbrightnessl = 2810 # voltage level to lower brightness
+        var ulowerbrightnessh = 2850 # voltage level to go back to normal brightness
+        var uenergysavefacel = 2770 # voltage level to switch to EnergysaveClockFace
+        var uenergysavefaceh = 2810 # voltage level to switch back to normal ClockFace
         var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
         var illuminance = sensors['ANALOG']['Illuminance1']
         var voltage = sensors['ANALOG']['A2']
         if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
-            if voltage < uenergysaveface # display a "screensaver"-Clockface to reduce LED wearout
-                self.debounceuenergysaveface += 1
-                if self.debounceuenergysaveface == 10
-                    self.currentClockFace=EnergysaveClockFace(self)
-                    return # don't do anything more
-                elif self.debounceuenergysaveface > 10
-                    return
-                end
-            else
-                self.debounceuenergysaveface = 0 # energy toggled, reset debounce-counter
+            #log("no override",2)
+            if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
+                log("ClockfaceManager: Activated energysaveClockFace",3)
+                self.energysaveClockfaceActive = true
+                self.currentClockFace=EnergysaveClockFace(self) # init clockface
+            elif ( voltage > uenergysavefaceh ) && self.energysaveClockfaceActive# use a hysteresis
+                log("ClockfaceManager: Deactivated energysaveClockFace",3)
+                self.energysaveClockfaceActive = false 
+                self.currentClockFace = clockFaces[self.currentClockFaceIdx](self) # switch back to normal clockface
+            # if we are in between the range, keep it as it is
             end
-            if voltage < ulowerbrightness # lower brightness to save energy
-                self.debounceulowerbrightness += 1
-                if self.debounceuenergysaveface > 10
-                    self.brightness = 10 # brightness fixed to 10
-                    return # don't do anything more
-                end
-            else 
-                self.debounceulowerbrightness = 0 # energy toggled, reset debounce-counter
+
+            if ( voltage < ulowerbrightnessl ) && !self.lowerbrightnessActive
+                log("ClockfaceManager: Activated low brightness for energy saving",3)
+                self.lowerbrightnessActive = true
+                self.brightness = 10
+            elif ( voltage > ulowerbrightnessh ) && self.lowerbrightnessActive
+                log("ClockfaceManager: Deactivated low brightness for energy saving",3)
+                self.lowerbrightnessActive = false
+            # if in between range, keep it as it is
             end
+
+            if self.energysaveClockfaceActive || self.lowerbrightnessActive
+                self.brightness = 10 
+                return # exit, do nothing more
+            # else continue with setting brightness
+            end
+
         end
-        # will only be called if no energysaving state is reached            
+        # will only be called if no energysaving state is active           
+        # if energysaveClockface still active, reactivate current clockface
+        if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+        end
+        self.lowerbrightnessActive = false
+        self.energysaveClockfaceActive = false 
         var brightness = int(10 * math.log(illuminance));
         if brightness < 10
             brightness = 10;
