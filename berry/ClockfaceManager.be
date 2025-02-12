@@ -16,6 +16,7 @@ import Alarm1ClockFace
 import Alarm2ClockFace
 import Alarm3ClockFace
 import Alarm4ClockFace
+import EnergysaveClockFace
 
 
 

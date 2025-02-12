@@ -18,6 +18,8 @@ class AlarmClockFaceBase: BaseClockFace
     static timexoffset = 8
     static timeyoffset = 1
     static buttonholdtimerID="buttonhold" # kept the same on all faces, so any timer will be removed
+    static handleeditprevID="editprev" # kept the same on all faces, so any timer will be removed
+    static handleeditnextID="editnext" # kept the same on all faces, so any timer will be removed
 
 
     def init(clockfaceManager)
@@ -119,9 +121,11 @@ class AlarmClockFaceBase: BaseClockFace
     end
 
     def handleEditPrev(value)
-        if value == 15 # just ignore all clears, as we don't use long presses with prev/next, we don't have to wait for holdtime
+        if value == 15 # clear will stop fast decrease
+            tasmota.remove_timer(self.handleeditprevID)
             return
         end
+        # single action will decrease value and then call itself repeatedly
         if self.EditField == 0
             self.EditHour = (self.EditHour - 1)
             if self.EditHour == -1
@@ -155,17 +159,26 @@ class AlarmClockFaceBase: BaseClockFace
             if self.EditRepeat == 2
                 self.EditRepeat = 0
             end
-        self.clockfaceManager.redraw()
+            self.clockfaceManager.redraw()
         end
-        #self.clockfaceManager.redraw()
      
+        # set timer for further decrease
+        var waittime
+        if value < 50 # call from button-action
+            waittime = 500
+        else 
+            waittime = 100
+        end
+        tasmota.set_timer(waittime,/->self.handleEditPrev(111),self.handleeditprevID)
 
     end
 
     def handleEditNext(value)
-        if value == 15 # just ignore all clears, as we don't use long presses with prev/next, we don't have to wait for holdtime to distinguish
+        if value == 15  # clear will stop fast increase
+            tasmota.remove_timer(self.handleeditnextID)
             return
         end
+        # single action will increase value and then call itself repeatedly
         if self.EditField == 0
             self.EditHour = (self.EditHour + 1)
             if self.EditHour == 24
@@ -198,8 +211,16 @@ class AlarmClockFaceBase: BaseClockFace
             if self.EditRepeat == 2
                 self.EditRepeat = 0
             end
+            self.clockfaceManager.redraw()
         end
-        self.clockfaceManager.redraw()
+        # set timer for further decrease
+        var waittime
+        if value < 50 # call from button-action, wait a little more first time
+            waittime = 500
+        else 
+            waittime = 100
+        end
+        tasmota.set_timer(waittime,/->self.handleEditNext(111),self.handleeditnextID)
     end
 
 
