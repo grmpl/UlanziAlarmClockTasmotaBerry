@@ -38,10 +38,13 @@ class ClockfaceManager
     var color
     var currentClockFace
     var currentClockFaceIdx
-    var snoozerunning
-    var alarmedit
-    var lastredraw
+    var snoozerunning # indicates snooze being active for indication on all faces
+    var alarmedit # indicates edit-mode on alarm faces to redirect button actions
+    var lastredraw # introduced to avoid unnecessary redraws in short time
     var buttonholddone # necessary to ignore clear-values of button after hold-action was done
+    var energysaveoverride # override energy saving mode with button action
+    var debounceulowerbrightness
+    var debounceuenergysaveface
 
     static snoozetime=360 # 6 minutes
     static buttonholdtimerID="buttonhold"
@@ -53,6 +56,9 @@ class ClockfaceManager
         self.alarmHandler = AlarmHandler()
         self.lastredraw=0
         self.buttonholddone=false
+        self.energysaveoverride=tasmota.millis()
+        self.debounceuenergysaveface = 0
+        self.debounceulowerbrightness = 0
 
         self.brightness = 50;
         self.color = fonts.palette['red']
@@ -124,6 +130,7 @@ class ClockfaceManager
     # Button-action if setoption13=1: 10=Single, 15:Clean (Release)
 
     def on_button_prev(value, trigger, msg)
+        self.energysaveoverride=tasmota.millis()
         # If Alarm is active and no Snooze, activate Snooze, do nothing
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
@@ -144,6 +151,12 @@ class ClockfaceManager
     end
 
     def on_button_action(value, trigger, msg)
+        self.energysaveoverride=tasmota.millis()
+        # if energysaveClockface active, reactivate current clockface
+        if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+            self.redraw()
+        end
                
         # If Alarm is active handle button different
         var alarmset = persist.member('alarmactive')
@@ -178,9 +191,7 @@ class ClockfaceManager
     end
 
     def on_button_next(value, trigger, msg)
-        # print(value)
-        # print(trigger)
-        # print(msg)
+        self.energysaveoverride=tasmota.millis()
         # If Alarm is active and no Snooze, activate Snooze
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
@@ -204,8 +215,6 @@ class ClockfaceManager
 
     # This will be called automatically every 1s by the tasmota framework
     def every_second()
-
-
         # Check for Alarm
         var alarmset = persist.member('alarmactive')
         # Alarm set and no Snooze, 
@@ -261,11 +270,37 @@ class ClockfaceManager
 
     end
 
-    # For updating brightness
+    # For updating brightness and setting energy saving modes
     def update_brightness_from_sensor()
-        var sensors = json.load(tasmota.read_sensors());
-        var illuminance = sensors['ANALOG']['Illuminance1'];
-
+        var waitoverride = 60000 # 1 Minute override after button press
+        var ulowerbrightness = 2810 # voltage level to lower brightness
+        var uenergysaveface = 2790 # voltage level to switch to EnergysaveClockFace
+        var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
+        var illuminance = sensors['ANALOG']['Illuminance1']
+        var voltage = sensors['ANALOG']['A2']
+        if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
+            if voltage < uenergysaveface # display a "screensaver"-Clockface to reduce LED wearout
+                self.debounceuenergysaveface += 1
+                if self.debounceuenergysaveface == 10
+                    self.currentClockFace=EnergysaveClockFace(self)
+                    return # don't do anything more
+                elif self.debounceuenergysaveface > 10
+                    return
+                end
+            else
+                self.debounceuenergysaveface = 0 # energy toggled, reset debounce-counter
+            end
+            if voltage < ulowerbrightness # lower brightness to save energy
+                self.debounceulowerbrightness += 1
+                if self.debounceuenergysaveface > 10
+                    self.brightness = 10 # brightness fixed to 10
+                    return # don't do anything more
+                end
+            else 
+                self.debounceulowerbrightness = 0 # energy toggled, reset debounce-counter
+            end
+        end
+        # will only be called if no energysaving state is reached            
         var brightness = int(10 * math.log(illuminance));
         if brightness < 10
             brightness = 10;

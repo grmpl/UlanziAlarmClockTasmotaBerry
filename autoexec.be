@@ -1,7 +1,8 @@
 import ClockfaceManager
 
+var _clockfaceManager = ClockfaceManager() # global definition to be able to access it in case of debugging
+
 def startClock()
-  var _clockfaceManager = ClockfaceManager()
   tasmota.add_driver(_clockfaceManager)
 end
 

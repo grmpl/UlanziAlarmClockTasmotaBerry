@@ -1,7 +1,7 @@
 import BaseClockFace
 
 class EnergysaveClockFace: BaseClockFace
-
+# This Clockface is used as a screensaver. It could reduce wearout of LEDs.
     var Pixelnum
 
 
@@ -13,9 +13,9 @@ class EnergysaveClockFace: BaseClockFace
 
 
     def render()
-        self.matrixController.clear()
-        self.matrixController.set_matrix_pixel_color(self.Pixelnum % 32, self.Pixelnum / 32, 0xffffff, 0)
+        self.matrixController.set_matrix_pixel_color(self.Pixelnum % 32, self.Pixelnum / 32, 0x000000, 0)
         self.Pixelnum = ( self.Pixelnum + 1 ) % 256
+        self.matrixController.set_matrix_pixel_color(self.Pixelnum % 32, self.Pixelnum / 32, 0xffffff, 10)
     end
 end
 
