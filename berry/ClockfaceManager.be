@@ -16,6 +16,7 @@ import Alarm1ClockFace
 import Alarm2ClockFace
 import Alarm3ClockFace
 import Alarm4ClockFace
+import EnergysaveClockFace
 
 
 
@@ -37,21 +38,35 @@ class ClockfaceManager
     var color
     var currentClockFace
     var currentClockFaceIdx
-    var snoozerunning
+    var snoozerunning # indicates snooze being active for indication on all faces
+    var alarmedit # indicates edit-mode on alarm faces to redirect button actions
+    var lastredraw # introduced to avoid unnecessary redraws in short time
+    var buttonholddone # necessary to ignore clear-values of button after hold-action was done
+    var energysaveoverride # override energy saving mode with button action
+    var energysaveClockfaceActive
+    var lowerbrightnessActive
 
     static snoozetime=360 # 6 minutes
+    static buttonholdtimerID="buttonhold"
 
 
     def init()
         log("ClockfaceManager Init",3);
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
+        self.lastredraw=0
+        self.buttonholddone=false
+        self.energysaveoverride=tasmota.millis()
+        self.energysaveClockfaceActive = false
+        self.lowerbrightnessActive = false
 
         self.brightness = 50;
         self.color = fonts.palette['red']
 
         self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
         self.matrixController.draw()
+
+        self.alarmedit = false
 
         self.currentClockFaceIdx = 0
         self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
@@ -105,68 +120,80 @@ class ClockfaceManager
            persist.alarmactive=0
            self.alarmHandler.buzzer_alarmoff(1,50,100,2)
            persist.save()
-           log("ClockfaceManager: Alarm switched off by Web-Button") 
+           log("ClockfaceManager: Alarm switched off by Web-Button",2) 
         end
     end
 
 
-    # React on Button action
-    # Button-action: 10=Single, 11=Double, 12=Triple, 3=Hold, 15:Clean (Release)
+    # React on Button action, 
+    # Button-action if setoption13=0: 10=Single, 11=Double, 12=Triple, 3=Hold, 15:Clear (Release)
+    # Button-action if setoption13=1: 10=Single, 15:Clean (Release)
 
     def on_button_prev(value, trigger, msg)
-        # print(value)
-        # print(trigger)
-        # print(msg)
+        self.energysaveoverride=tasmota.millis()
         # If Alarm is active and no Snooze, activate Snooze, do nothing
+        var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("Snooze activated by button_prev",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
-            # I suspect interference with other redraws, so this is disabled.
             self.redraw()
-        else
-
+        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil ) # during alarmedit handling is done by AlarmClockface
+                self.currentClockFace.handleEditPrev(value)
+        elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
-
             self.redraw()
+        # else ignore Clean with setoption13=1, ignore Hold with setoption13=0
         end
     end
 
     def on_button_action(value, trigger, msg)
+        self.energysaveoverride=tasmota.millis()
+        # if energysaveClockface active, reactivate current clockface
+        if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+            self.redraw()
+        end
                
         # If Alarm is active handle button different
         var alarmset = persist.member('alarmactive')
-        if alarmset > 0 && value == 3 #Hold will switch off Alarm on all faces
-            log("ClockfaceManager: Alarm switched off",2)
-            self.alarmHandler.buzzer_alarmoff(1,200,100,2)
-            persist.alarmactive=0 
-            persist.save()
-            self.redraw()
-        elif value == 15 # Clear (release of Hold) will never be handled! 
-            # do nothing, otherwise we would have to check if it was an hold because alarm was active, or it was a regular hold
-        elif  alarmset > 0 && persist.member('snooze') == 0 #if Alarm on, always do Snooze on
+        var so13 = tasmota.get_option(13)
+        var holdtime = ( tasmota.get_option(32) * 100 ) # setoption32 defines hold time in factors of 100msec
+        if self.buttonholddone && value == 15 # Clear after action for hold is completely ignored.
+            self.buttonholddone=false
+        elif ( alarmset > 0 ) && ( ( so13 == 0 ) && ( value == 3 ) ) #with setoption13=0 react on hold if alarm is active
+            log("ClockfaceManager: Alarm switched off by button",2)
+            self.stopalarm()
+        elif ( alarmset > 0 ) && ( so13 == 1 ) && ( value  == 10 ) # with setoption13=1 every single-action will trigger hold function in future
+            tasmota.set_timer(holdtime,/->self.stopalarm(),self.buttonholdtimerID)
+        elif ( alarmset > 0 ) && ( persist.member('snooze') == 0 ) #if alarm active and no snooze yet, every other action will activate snooze, this includes clear with setoption13=1 if hold-action was not performed yet
             log("ClockfaceManager: Snooze activated by button_action",2)
+            if so13 == 1 #Remove holdtimer if it is still set (i.e. if hold time was not reached); there is no possibility to check for timer
+                tasmota.remove_timer(self.buttonholdtimerID)
+            end
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
-        else
+        else # if no alarm is active, we hand it completely over to clockface; if alarm is running and snooze already active, it will not be completely handed over: single action will be lost with setoption13=1
+            if so13 == 1 #If there is a hold timer still running, remove it before handing over to clockface
+                tasmota.remove_timer(self.buttonholdtimerID)
+            end
             var handleActionMethod = introspect.get(self.currentClockFace, "handleActionButton");
             if handleActionMethod != nil
-                self.currentClockFace.handleActionButton()
+                self.currentClockFace.handleActionButton(value)
             end
         end
     end
 
     def on_button_next(value, trigger, msg)
-        # print(value)
-        # print(trigger)
-        # print(msg)
+        self.energysaveoverride=tasmota.millis()
         # If Alarm is active and no Snooze, activate Snooze
+        var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
             log("ClockfaceManager: Snooze activated by button_next",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
@@ -174,19 +201,20 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
-        else
+        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditNext") != nil )
+                self.currentClockFace.handleEditNext(value)
+        elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only Single, with setoption13=0 use Clean on hold and all other values
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
             self.redraw()
+        # else do nothing - ignore Clean with setoption13=1, ignore Hold with setoption13=0
         end
     end
 
 
     # This will be called automatically every 1s by the tasmota framework
     def every_second()
-
-
         # Check for Alarm
         var alarmset = persist.member('alarmactive')
         # Alarm set and no Snooze, 
@@ -217,27 +245,78 @@ class ClockfaceManager
             persist.save()
         end
 
-        self.update_brightness_from_sensor()
+        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # Only update if no alarmedit and 500msec since last redraw
+            self.update_brightness_from_sensor()
+            self.redraw()
+        end
+
+
+    end
+
+    def stopalarm()
+        self.alarmHandler.buzzer_alarmoff(1,200,100,2)
+        persist.alarmactive=0 
+        persist.save()
         self.redraw()
-
-
+        self.buttonholddone=true
     end
 
     # This will redraw current face
     def redraw()
-        #var start = tasmota.millis()
 
         self.currentClockFace.render()
         self.matrixController.draw()
+        self.lastredraw=tasmota.millis()
 
-        #print("Redraw took", tasmota.millis() - start, "ms")
     end
 
-    # For updating brightness
+    # For updating brightness and setting energy saving modes
     def update_brightness_from_sensor()
-        var sensors = json.load(tasmota.read_sensors());
-        var illuminance = sensors['ANALOG']['Illuminance1'];
+        var waitoverride = 60000 # 1 Minute override after button press
+        var ulowerbrightnessl = 2800 # voltage level to lower brightness
+        var ulowerbrightnessh = 2840 # voltage level to go back to normal brightness
+        var uenergysavefacel = 2770 # voltage level to switch to EnergysaveClockFace
+        var uenergysavefaceh = 2810 # voltage level to switch back to normal ClockFace
+        var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
+        var illuminance = sensors['ANALOG']['Illuminance1']
+        var voltage = sensors['ANALOG']['A2']
+        if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
+            #log("no override",2)
+            if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
+                log("ClockfaceManager: Activated energysaveClockFace",3)
+                self.energysaveClockfaceActive = true
+                self.currentClockFace=EnergysaveClockFace(self) # init clockface
+            elif ( voltage > uenergysavefaceh ) && self.energysaveClockfaceActive# use a hysteresis
+                log("ClockfaceManager: Deactivated energysaveClockFace",3)
+                self.energysaveClockfaceActive = false 
+                self.currentClockFace = clockFaces[self.currentClockFaceIdx](self) # switch back to normal clockface
+            # if we are in between the range, keep it as it is
+            end
 
+            if ( voltage < ulowerbrightnessl ) && !self.lowerbrightnessActive
+                log("ClockfaceManager: Activated low brightness for energy saving",3)
+                self.lowerbrightnessActive = true
+                self.brightness = 10
+            elif ( voltage > ulowerbrightnessh ) && self.lowerbrightnessActive
+                log("ClockfaceManager: Deactivated low brightness for energy saving",3)
+                self.lowerbrightnessActive = false
+            # if in between range, keep it as it is
+            end
+
+            if self.energysaveClockfaceActive || self.lowerbrightnessActive
+                self.brightness = 10 
+                return # exit, do nothing more
+            # else continue with setting brightness
+            end
+
+        end
+        # will only be called if no energysaving state is active           
+        # if energysaveClockface still active, reactivate current clockface
+        if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+        end
+        self.lowerbrightnessActive = false
+        self.energysaveClockfaceActive = false 
         var brightness = int(10 * math.log(illuminance));
         if brightness < 10
             brightness = 10;

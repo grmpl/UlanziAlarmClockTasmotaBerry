@@ -200,14 +200,14 @@ class BaseClockFace
             return iconmatrix
        
         else
-            log("BaseClockFace: Not supported file format",4)
+            log("BaseClockFace: Not supported file format",2)
 
         end
         
     iconfile.close()
     end
 
-    def drawicon(iconlist,offsetx,offsety)
+    def drawicon(iconlist,offsetx,offsety,minbright)
         # input: bytes-list, offset x, offset y
         # for each line, for each pixel set matrixpixelcolor
         # if pixel=nil do nothing
@@ -218,8 +218,8 @@ class BaseClockFace
         x=offsetx
         y=offsety
         # low brightness does not work for icons, colors will fade away
-        if self.clockfaceManager.brightness < 40
-            brightness = 40
+        if self.clockfaceManager.brightness < minbright
+            brightness = minbright
         else
             brightness = self.clockfaceManager.brightness
         end

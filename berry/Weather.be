@@ -48,7 +48,7 @@ class Weather
         end
 
         log("Weather: Cache outdated getting forecast",4)
-        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(self.latitude) + "&longitude=" + str(self.longitude) + "&hourly=temperature_2m,weather_code&timezone=Europe%2FBerlin&temporal_resolution=hourly_3&forecast_days=1"
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(self.latitude) + "&longitude=" + str(self.longitude) + "&hourly=temperature_2m,weather_code&timezone=Europe%2FBerlin&temporal_resolution=hourly_3&forecast_days=3"
         self.cl.begin(url)
         var r = self.cl.GET()
         self.last_update_time_f = tasmota.rtc()['local']
