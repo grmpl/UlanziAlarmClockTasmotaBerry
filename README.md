@@ -41,6 +41,7 @@ Editing of alarm is possible by long press of middle button. The value to be cha
 - If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be increased in time. During alarm *any* button press on any face will activate Snooze.
 - Long press on middle button on all faces will stop alarm until next timer fires.
 - An additional button on the main web page will give you the possibility to stop an alarm remotely.
+- If running on battery the clock will switch after some minutes to lowest brightness level and after 1-2 hours it will switch to a "ledsaver"-screen. Switching is controlled by battery voltage and not by timing.
 
 
 ## Additional information

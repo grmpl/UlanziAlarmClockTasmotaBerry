@@ -273,8 +273,8 @@ class ClockfaceManager
     # For updating brightness and setting energy saving modes
     def update_brightness_from_sensor()
         var waitoverride = 60000 # 1 Minute override after button press
-        var ulowerbrightnessl = 2810 # voltage level to lower brightness
-        var ulowerbrightnessh = 2850 # voltage level to go back to normal brightness
+        var ulowerbrightnessl = 2800 # voltage level to lower brightness
+        var ulowerbrightnessh = 2840 # voltage level to go back to normal brightness
         var uenergysavefacel = 2770 # voltage level to switch to EnergysaveClockFace
         var uenergysavefaceh = 2810 # voltage level to switch back to normal ClockFace
         var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
