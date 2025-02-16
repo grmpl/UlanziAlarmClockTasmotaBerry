@@ -85,9 +85,15 @@ class WeatherClockFace: BaseClockFace
                 self.drawweather("beach.pam", iconnumber, xoffset)
             elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 )
                 self.drawweather("beer.pam", iconnumber, xoffset)
-            elif wmo == 1 || wmo == 2 || wmo == 3 || wmo == 45 || wmo == 48
+            elif wmo == 1 
+                self.drawweather("cloudy1.pam",iconnumber,xoffset)
+                
+            elif wmo == 2
+                self.drawweather("cloudy2.pam",iconnumber,xoffset)
+                
+            elif wmo == 3 || wmo == 45 || wmo == 48
                 # cloudy (1-3) /fog (45,48)
-                self.drawweather("cloudy.pam",iconnumber,xoffset)
+                self.drawweather("cloudy3.pam",iconnumber,xoffset)
 
             elif wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
                 wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||

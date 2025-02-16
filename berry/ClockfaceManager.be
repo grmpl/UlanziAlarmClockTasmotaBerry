@@ -4,6 +4,9 @@ import math
 import introspect
 import persist
 import webserver
+import path
+import string
+import mqtt
 
 import MatrixController
 import AlarmHandler
@@ -32,22 +35,25 @@ var clockFaces = [
 ];
 
 class ClockfaceManager
+    # ClockfaceHandling
     var matrixController
     var alarmHandler
     var brightness
     var color
     var currentClockFace
     var currentClockFaceIdx
+    var lastredraw # introduced to avoid unnecessary redraws in short time
+    # Alarmhandling
     var snoozerunning # indicates snooze being active for indication on all faces
     var alarmedit # indicates edit-mode on alarm faces to redirect button actions
-    var lastredraw # introduced to avoid unnecessary redraws in short time
     var buttonholddone # necessary to ignore clear-values of button after hold-action was done
+    # Handling energy saving states
     var energysaveoverride # override energy saving mode with button action
     var energysaveClockfaceActive
     var lowerbrightnessActive
 
     static snoozetime=360 # 6 minutes
-    static buttonholdtimerID="buttonhold"
+    static buttonholdtimerID="buttonhold" # for removing timer
 
 
     def init()
@@ -84,9 +90,15 @@ class ClockfaceManager
         if persist.member('alarmactive') == nil
             persist.alarmactive = 0
         end
+
+        if persist.member('iotdlist') == nil
+            persist.iotdlist = ['iotd.pam']
+        end
+
         persist.save()
 
-
+        # Add MQTT-listener
+        mqtt.subscribe("tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotd",/topic idx payload_s payload_b->self.iotdmqtt(topic,idx,payload_s,payload_b) )
         
         # And create a custom Tasmota-Command
         tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
@@ -245,10 +257,8 @@ class ClockfaceManager
             persist.save()
         end
 
-        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # Only update if no alarmedit and 500msec since last redraw
-            self.update_brightness_from_sensor()
-            self.redraw()
-        end
+        # try to split blocking berry code into smaller chunks
+        tasmota.set_timer(50,/->self.update_brightness_from_sensor(),"brightnesstimer")
 
 
     end
@@ -326,8 +336,105 @@ class ClockfaceManager
         end
         # print("Brightness: ", self.brightness, ", Illuminance: ", illuminance);
 
-        self.brightness = brightness;
+        self.brightness = brightness
+        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # Only update if no alarmedit and 500msec since last redraw
+            tasmota.set_timer(50,/->self.redraw(),"redrawtimer")
+        end
     end
+
+    def iotdmqtt(topic,idx,payload_s,payload_b)
+        log("ClockfaceManager: iotdmqtt called with topic: " + str(topic) + " payload: " + str(payload_s),2)
+        var payload_json = json.load(payload_s)
+        if payload_json == nil
+            log("ClockfaceManager: No valid Json in MQTT-message from " + str(topic),1)
+            return true
+        end
+        var action
+        try 
+            action = payload_json['action']
+        except .. as err
+            log("ClockfaceManager: Could not find action-key, error:" + str(err),1)
+            return true
+        end
+        
+        if action == "addfile"
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
+                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+                return true
+            end
+
+            var content
+            try 
+                content = bytes().fromb64(payload_json['content'])
+            except .. as err
+                log("ClockfaceManager: Could not translate content from base63, error:" + str(err),1)
+                return true
+            end
+
+            if size(content) < 10 || string.find(content.asstring(),'P',0,1) < 0
+                log("ClockfaceManager: No valid netpnm-file in content from MQTT-message for iotd",1)
+                return true
+            end
+            var file
+
+            try
+                file=open(filename,'wb')
+            except .. as err
+                log("ClockfaceManager: Can't open file for writing: " + str(filename) + ", error: " + str(err),1)
+                return true
+            end
+
+            file.write(content)
+            file.close()
+
+            var iotdlist = persist.member('iotdlist')
+            iotdlist.push(filename)
+            persist.iotdlist=iotdlist
+            persist.save()
+
+            return true
+
+        elif payload_json['action'] == "removefile"
+            var filename = payload_json['filename']
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
+                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+                return true
+            end
+
+            var iotdlist = persist.member('iotdlist')
+            var i = size(iotdlist) - 1
+            while i >= 0
+                if iotdlist[i] == filename
+                    iotdlist.pop(i) # must be done from back, otherwise list will be changed with all pops
+                end
+                i -= 1
+            end
+
+            persist.iotdlist=iotdlist
+            persist.save()
+            path.remove(filename)
+            return true
+
+        elif payload_json['action'] == "resetiotdlist"
+            persist.iotdlist = ['iotd.pam']
+            persist.save()
+            return true
+
+        
+        else 
+            log("ClockfaceManager: No valid action given, action: " + str(action),1)
+
+
+        end
+
+    end    
 
     # Some cleanups for gracefull shutdown
     def save_before_restart()

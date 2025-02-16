@@ -218,6 +218,9 @@ class BaseClockFace
         x=offsetx
         y=offsety
         # low brightness does not work for icons, colors will fade away
+        if iconlist == nil
+            return
+        end
         if self.clockfaceManager.brightness < minbright
             brightness = minbright
         else
