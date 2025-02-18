@@ -315,6 +315,7 @@ class ClockfaceManager
 
             if self.energysaveClockfaceActive || self.lowerbrightnessActive
                 self.brightness = 10 
+                tasmota.set_timer(50,/->self.redraw(),"redrawtimer")
                 return # exit, do nothing more
             # else continue with setting brightness
             end
