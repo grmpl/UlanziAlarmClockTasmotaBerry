@@ -14,20 +14,22 @@ class IconHandler
         self.Currentbuffer=0 # index which of both buffers to use
         self.Iconlist=[] # a list of files containing image data
         self.Iconlistindex=0 # index for the list of files
+        self.stopiconlist()
     end
 
-    def starticonlist(iconlist,xoffset,yoffset,minbright) # starts displaying a list of icon-files
+    def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager) # starts displaying a list of icon-files
         self.Iconlist=iconlist
         self.Iconlistindex=0
         self.Currentbuffer=0
+        self.stopiconlist()
         # Load first part of images into buffer
         var drawbuffer = self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer)
         # and start showing the buffer
-        self.drawicon(drawbuffer,0,xoffset,yoffset,minbright)
+        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,clockfaceManager)
         return 0
     end
 
-    def loadiconpart(filename,fileindex,maxnumber,buffer)
+    def loadiconpart(filename,fileindex,maxnumber,bufferslot)
         # This will load a given number of images from the file
         #  if file end is not reached, it will schedule another reading
         # Splitting in necessary as garbage collector can't clean up otherwise and heap will be exhausted
@@ -69,7 +71,7 @@ class IconHandler
         var counter=0
 
         if fileindex == 0
-            self.Iconbuffer[buffer]=bytes()
+            self.Iconbuffer[bufferslot]=bytes()
         end
 
 
@@ -193,9 +195,9 @@ class IconHandler
                     delay = 1000 / int(header[keypos+17..keypos+20]) * delay
                 end
                 #imagelist.push([delay,[]]) - a list will have too much overhead, we must stick to bytes buffer
-                self.Iconbuffer[buffer].add(delay,-2) # max 32 sec signed / 64 sec unsigned
-                self.Iconbuffer[buffer].add(width,1) # max 127 signed / 255 unsigned
-                self.Iconbuffer[buffer].add(height,1) # max 127 signed/255 unsigned
+                self.Iconbuffer[bufferslot].add(delay,-2) # max 32 sec signed / 64 sec unsigned
+                self.Iconbuffer[bufferslot].add(width,1) # max 127 signed / 255 unsigned
+                self.Iconbuffer[bufferslot].add(height,1) # max 127 signed/255 unsigned
 
 
                 readbuffer = readbuffer[headerend+2-headerprevsize..] # truncate readbuffer at beginning
@@ -218,7 +220,7 @@ class IconHandler
                     end
                 end
                 -#    
-                self.Iconbuffer[buffer] = self.Iconbuffer[buffer]..readbuffer[0..(width * height * 4)-1]
+                self.Iconbuffer[bufferslot] = self.Iconbuffer[bufferslot]..readbuffer[0..(width * height * 4)-1]
                 readbuffer = readbuffer[(width * height * 4)..] # truncate start of readbuffer
                 #reload buffer if we have emptied it and there are still images to load
                 if ( counter < maxnumber ) && ( readbuffer.size() < ( buffersize / 2 ) )
@@ -230,11 +232,11 @@ class IconHandler
             
             # Checking for further images to load
             if newfindex < iconfile.size() # if end of file is not reached, trigger loading next part
-                var timerident="LoadIconPart"+str(buffer)
-                tasmota.set_timer(100,/->self.loadiconpart(filename,newfindex,maxnumber,buffer),timerident)
+                var timerident="LoadIconPart"+str(bufferslot)
+                tasmota.set_timer(100,/->self.loadiconpart(filename,newfindex,maxnumber,bufferslot),timerident)
             end
             iconfile.close()
-            return buffer
+            return bufferslot
 
         # end of miff-read
 
@@ -317,16 +319,16 @@ class IconHandler
                 iconfile.close()
                 return nil
             end
-            self.Iconbuffer[buffer].add(2,2) # 2 seconds delay for single images
-            self.Iconbuffer[buffer].add(width,1) # 
-            self.Iconbuffer[buffer].add(height,1) # 
+            self.Iconbuffer[bufferslot].add(2000,-2) # 2 seconds delay for single images
+            self.Iconbuffer[bufferslot].add(width,1) # 
+            self.Iconbuffer[bufferslot].add(height,1) # 
 
 
             iconfilecontent=iconfile.readline()
             if string.startswith(iconfilecontent, 'ENDHDR')
-                self.Iconbuffer[buffer]=self.Iconbuffer[buffer]..iconfile.readbytes(width*height*4)
+                self.Iconbuffer[bufferslot]=self.Iconbuffer[bufferslot]..iconfile.readbytes(width*height*4)
                 iconfile.close()
-                return buffer # one icon with no specified delay time
+                return bufferslot # one icon with no specified delay time
             else
                 log("IconHandler: Expecting ENDHDR in sixth line of iconfile",1)
                 iconfile.close()
@@ -365,16 +367,16 @@ class IconHandler
                 iconfile.close()
                 return nil
             end
-            self.Iconbuffer[buffer].add(2,2) # 2 seconds delay for single images
-            self.Iconbuffer[buffer].add(width,1) # 
-            self.Iconbuffer[buffer].add(height,1) # 
+            self.Iconbuffer[bufferslot].add(2000,-2) # 2 seconds delay for single images
+            self.Iconbuffer[bufferslot].add(width,1) # 
+            self.Iconbuffer[bufferslot].add(height,1) # 
                 
-            for pixel:0..(width*height*3-1)
-                self.Iconbuffer[buffer] = self.Iconbuffer[buffer]..iconfile.readbytes(3)
-                self.Iconbuffer[buffer].add(0xff,1)
+            for pixel:0..(width*height-1)
+                self.Iconbuffer[bufferslot] = self.Iconbuffer[bufferslot]..iconfile.readbytes(3)
+                self.Iconbuffer[bufferslot].add(0xff,1)
             end            
             iconfile.close()
-            return buffer
+            return bufferslot
     
         else
             log("IconHandler: Not supported file format",2)
@@ -388,23 +390,25 @@ class IconHandler
     end
 
 
-    def drawicon(iconbuffern, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager)
+    def drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager)
+        #clockfaceManager.energysaveoverride=tasmota.millis()
+        #log("drawmultipleicons called with " + str(iconbufferslot) + " " + str(iconbufferindex) + " " + str(clockfaceManager),2 )
         var listsize = size(self.Iconlist)
-        if listsize > 1 # trigger load of next buffer in background if iconlist > 1
+        if listsize > 1 && iconbufferindex == 0 # trigger load of next buffer in background if iconlist > 1 and we are at beginning
             self.Iconlistindex = ( self.Iconlistindex + 1 ) % listsize
             self.Currentbuffer = ( self.Currentbuffer + 1 ) % 2
             var timerident="LoadIconPart"+str(self.Currentbuffer)
             tasmota.set_timer(500,/->self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer),timerident)
         end
         # draw icon at index of iconbuffer, determine delay, set newindex
-        if self.Iconbuffer[iconbuffern] == nil
+        if self.Iconbuffer[iconbufferslot] == nil
             return
         end
         var matrixController=clockfaceManager.matrixController
         var brightness
-        var delay = self.Iconbuffer[iconbuffern].get(iconbufferindex,2)
-        var width = self.Iconbuffer[iconbuffern].get(iconbufferindex+2,1)
-        var height = self.Iconbuffer[iconbuffern].get(iconbufferindex+3,1)
+        var delay = self.Iconbuffer[iconbufferslot].get(iconbufferindex,-2)
+        var width = self.Iconbuffer[iconbufferslot].get(iconbufferindex+2,1)
+        var height = self.Iconbuffer[iconbufferslot].get(iconbufferindex+3,1)
         
         if clockfaceManager.brightness < minbright
             brightness = minbright
@@ -415,18 +419,24 @@ class IconHandler
         for line:0..height-1
             for pixel:0..width-1
                 iconbufferindex += 4
-                if self.Iconbuffer[iconbuffern].get(iconbufferindex+3) > 127 
-                    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, self.Iconbuffer[iconbuffern].get(iconbufferindex,-3),brightness)
+                if self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) > 127 
+                    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, self.Iconbuffer[iconbufferslot].get(iconbufferindex,-3),brightness)
+                else
+                    # Don't know how to handle transparency yet, so just paint it black
+                    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 0,brightness)
                 end
             end
         end
+        matrixController.draw()
         iconbufferindex += 4
 
 
-        if iconbufferindex < size(self.Iconbuffer[iconbuffern]) # if images left in iconbuffer, trigger draw of next image
-            tasmota.set_timer(delay,/->self.drawicon(iconbuffern, iconbufferindex, xoffset, yoffset, minbright,matrixController), "DrawIcon" )
+
+        #log("Drawn, Index at " + str(iconbufferindex) + " delay at " + str(delay) + " size Iconbuffer " + str(size(self.Iconbuffer[iconbufferslot])) + " Currentbuffer " + str(self.Currentbuffer),2)
+        if iconbufferindex < size(self.Iconbuffer[iconbufferslot]) # if images left in iconbuffer, trigger draw of next image
+            tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), "DrawIcon" )
         else # draw image from next iconbuffer (could be the same if only one icon in iconlist)
-            tasmota.set_timer(delay,/->self.drawicon(self.Currentbuffer, 0, xoffset, yoffset, minbright,matrixController), "DrawIcon" )
+            tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), "DrawIcon" )
         end
             
     end
@@ -435,9 +445,6 @@ class IconHandler
         tasmota.remove_timer("DrawIcon")
         tasmota.remove_timer("LoadIconPart0")
         tasmota.remove_timer("LoadIconPart1")
-        self.Iconbuffer1=[]
-        self.Iconbuffer2=[]
-        self.Currentbuffer=0
     end
 
 
