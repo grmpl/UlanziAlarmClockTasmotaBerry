@@ -1,6 +1,50 @@
 import string
 
 class IconHandler
+# Class for loading and displaying icons from files, including animations.
+# Memory is a crucial point, as animated icons could take up a lot of memory. Some measures are taken to control memory usage:
+# - Loading will be done in parts for animations with >Loadcount images. 
+#    This must be done as otherwise heap memory will get exhausted. As Berry is blocking code, even garbage collector cannot
+#    run during code running. Combined with too less control over Berry object memory allocation this leads to high memory usage 
+#    during one load step. In splitting the loading of the file, garbage collector gets the chance to clean up.
+# - Before loading next image, free memory will be checked. This helps, but is no guarantee for not exhausting memory
+# - Only two icon-files will be buffered in memory. If more than two files are to be displayed, display and loading is done alternately
+# - Buffering is done in plain byte-types. Attempts to store them in lists were abandoned, as lists will take up to 5x more of memory space.
+# 
+# Icons can be loaded from a miff-, pam- or ppm-file with the following structure:
+# miff:
+# id=ImageMagick
+# class=DirectClass
+# columns=0-32
+# rows=0-8
+# depth=8
+# type=TrueColorAlpha
+# delay=??
+# ticks-per-second=???
+#
+# pam:
+# P7
+# WIDTH 8
+# HEIGHT 8
+# DEPTH 4
+# MAXVAL 255
+# TUPLTYPE RGB_ALPHA
+# ENDHDR
+# <R G B Alpha values for each pixel, 1 byte per value>
+#
+# ppm:
+# P6
+# 8 8
+# 255
+# < R G B values for each pixel, 1 byte per value>
+#
+# miff files can be created by image magick with "convert inputfile -type TrueColorAlpha +profile \* outputfile.miff"
+# Keys stated above will be evaluated, all other keys will be ignored. Multiple pictures in one file will be handled as animation.
+# ppm files can be created with this format by using pngtopam or giftopnm from netpbm-tools, pam files are created by using pngtopam with option -alphapam
+# with Netpbm 11.5.2 on Debian/Ubuntu
+# The official format definition of ppm and pam would allow for more variations of the formatting, but this code requires exactly the given formats
+# Netpbm would allow for animations, too, but giftopnm can only create ppm which does not support alpha-channel and png does not support animations, so I switched to miff instead.
+
     var Iconbuffer
     var Currentbuffer
     var Iconlist
@@ -32,38 +76,7 @@ class IconHandler
     def loadiconpart(filename,fileindex,maxnumber,bufferslot)
         # This will load a given number of images from the file
         #  if file end is not reached, it will schedule another reading
-        # Splitting in necessary as garbage collector can't clean up otherwise and heap will be exhausted
-        
-        # Icons can be loaded from a miff-, pam- or ppm-file with the following structure:
-        # miff:
-        # id=ImageMagick
-        # class=DirectClass
-        # columns=0-32
-        # rows=0-8
-        # depth=8
-        # type=TrueColorAlpha
-        # delay=??
-        # ticks-per-second=???
-        # pam:
-        # P7
-        # WIDTH 8
-        # HEIGHT 8
-        # DEPTH 4
-        # MAXVAL 255
-        # TUPLTYPE RGB_ALPHA
-        # ENDHDR
-        # <R G B Alpha values for each pixel, 1 byte per value>
-        # ppm:
-        # P6
-        # 8 8
-        # 255
-        # < R G B values for each pixel, 1 byte per value>
-        # miff files can be created by image magick with "convert inputfile -type TrueColorAlpha +profile \* outputfile.miff"
-        # Options given will be evaluated, all other options will be ignored. Multiple pictures in one file will be handled as animation.
-        # ppm files can be created with this format by using pngtopam or giftopnm from netpbm-tools, pam files are created by using pngtopam with option -alphapam
-        # with Netpbm 11.5.2 on Debian/Ubuntu
-        # The official format definition of ppm and pam would allow for more variations of the formatting, but this code requires exactly the given formats
-
+        # Splitting in necessary as garbage collector can't clean up otherwise in between so heap will soon be exhausted
 
         var iconfile
         var readbuffer
@@ -109,9 +122,13 @@ class IconHandler
                     return nil
                 end
                 # this code always starts at header, reload of buffer is done during content read
-                #
-                # there is no search function for bytes-object and any iteration over bytes object is slow (>50msec for 1000 bytes!)
-                # Search function from string-module is ten times faster than iteration (6msec), even including conversion!
+                
+                # We have to search for end of header in buffer
+                # Unfortunately there is no search-function implemented in bytes-type.
+                # Looping over buffer would be a bad idea: looping by itself is slow in berry (10msec for 1000 entries)
+                # and looping over bytes is very very slow: it would take ~80 msec for 1000 bytes! (800 msec for 10000 bytes)
+                # Search function from string-type would give a result even from 10000 bytes in 8 msec! (including conversion!)
+                # So, even it looks strange, string-conversion is a good idea.
                 header=readbuffer.asstring() # asstring is half the size of tohex, so we work with string
                 #log("debug: header " + header)
                 headerend=string.find(header,headerendstring) 

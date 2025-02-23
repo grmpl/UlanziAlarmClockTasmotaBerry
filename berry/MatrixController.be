@@ -4,7 +4,9 @@ import fonts
 
 class MatrixController
     var leds
-    var matrix
+    # var matrix # matrix does not work correctly, working without matrix
+    var foreground
+    var background
     var font
     var font_width
     var row_size
@@ -30,7 +32,14 @@ class MatrixController
             3 # There seems to be an RMT conflict with the default one causing pixel corruption
         )
         self.leds.gamma = false
-        self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
+        # self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
+        # this does not work:
+        # self.matrix.set_alternate(true)
+        self.foreground=bytes(-(self.row_size*self.col_size)*4)
+        for i:0..256
+            self.foreground.set(i*4,0xFF000000,-4)
+        end
+        self.background=bytes(-(self.row_size*self.col_size)*3)
 
         self.change_font('MatrixDisplay3x5')
 
@@ -42,15 +51,21 @@ class MatrixController
     end
 
     def clear()
-        for i: 0..size(self.matrix.pix_buffer)-1
-            self.matrix.pix_buffer[i] = 0;
+        var blank=bytes(-self.col_size*3)
+
+        for i:0..self.row_size-1
+            self.background.setbytes(i*self.col_size*3,blank)
         end
 
-        self.matrix.dirty()
     end
 
     def draw()
-        self.matrix.show()
+        for i:0..self.row_size-1
+            self.leds.pixels_buffer().setbytes( i*self.col_size*3, 
+                                              self.background[i*3*self.col_size..(i*self.col_size+self.col_size-1)*3] )
+        end
+        self.leds.dirty()
+        self.leds.show()
     end
 
     def change_font(font_key)
@@ -59,14 +74,14 @@ class MatrixController
     end
 
     # x is the column, y is the row, (0,0) from the top left
-    def set_matrix_pixel_color(x, y, color, brightness)
+    def set_matrix_pixel_color(x, y, color, brightness, fg) #
         # if y is odd, reverse the order of y
         if y % 2 == 1
             x = self.col_size - x - 1
         end
 
         if x < 0 || x >= self.col_size || y < 0 || y >= self.row_size
-            log("Invalid pixel: "+str(x)+", "+str(y),3)
+            #log("Invalid pixel: "+str(x)+", "+str(y),3)
             return
         end
 
@@ -77,9 +92,18 @@ class MatrixController
             self.prev_corrected_color = self.to_gamma(color, brightness)
         end
 
-        # call the native function directly, bypassing set_matrix_pixel_color, to_gamma etc
-        # this is faster as otherwise to_gamma would be called for every single pixel even if they are the same
-        self.leds.call_native(10, y * self.col_size + x, self.prev_corrected_color)
+        # #call the native function directly, bypassing set_matrix_pixel_color, to_gamma etc
+        # #this is faster as otherwise to_gamma would be called for every single pixel even if they are the same
+        # Not really: 35msec instead of 40msec for 256 pixels but we need the code for efficient foreground-blending
+           # self.leds.call_native(10, y * self.col_size + x, self.prev_corrected_color)
+        if !fg
+            self.background.set( (x+y*self.col_size)*3 , 
+                                 self.leds.blend_color( self.prev_corrected_color , 
+                                                        self.foreground.get( (x+y*self.col_size)*4 , -4 ) ) ,
+                                 -3 )
+        else
+            self.foreground.set((x+y*self.col_size)*3 , self.prev_corrected_color,-4)
+        end
     end
 
     # set pixel column to binary value
