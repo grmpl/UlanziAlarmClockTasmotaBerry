@@ -1,11 +1,12 @@
 import BaseClockFace
 import Weather
+import IconHandler
 import string
 import persist
 
 class WeatherClockFace: BaseClockFace
 
-
+    var iconHandler
     var weather
     var weathericon 
     var weatherfile
@@ -16,6 +17,7 @@ class WeatherClockFace: BaseClockFace
         self.weather = Weather()
         self.weathericon=[[nil],[nil]]
         self.weatherfile=["",""]
+        self.iconHandler=IconHandler()
     end
 
     def render()
@@ -82,40 +84,40 @@ class WeatherClockFace: BaseClockFace
         # Display weather icon
             var wmo=wmocode[iconnumber]
             if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 )
-                self.drawweather("beach.pam", iconnumber, xoffset)
+                self.iconHandler.starticonlist(["beach.pam"], xoffset,0,40,clockfaceManager)
             elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 )
-                self.drawweather("beer.pam", iconnumber, xoffset)
+                self.iconHandler.starticonlist(["beer.pam"], xoffset,0,40,clockfaceManager)
             elif wmo == 1 
-                self.drawweather("cloudy1.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["cloudy1.pam"], xoffset,0,40,clockfaceManager)
                 
             elif wmo == 2
-                self.drawweather("cloudy2.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["cloudy2.pam"], xoffset,0,40,clockfaceManager)
                 
             elif wmo == 3 || wmo == 45 || wmo == 48
                 # cloudy (1-3) /fog (45,48)
-                self.drawweather("cloudy3.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["cloudy3.pam"], xoffset,0,40,clockfaceManager)
 
             elif wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
                 wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
                 wmo == 80 || wmo == 81 || wmo == 82 
                 # rain, 56,57,66,67 with ice
-                self.drawweather("rainy.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["rainy.pam"], xoffset,0,40,clockfaceManager)
             
             elif wmo == 95 || wmo == 96 || wmo == 99
                 # 95,96,99 thunderstorm
-                self.drawweather("lightning.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["lightning.pam"], xoffset,0,40,clockfaceManager)
 
             elif wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86
                 # snow
-                self.drawweather("snowfall.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["snowfall.pam"], xoffset,0,40,clockfaceManager)
 
             elif wmo == 0 
                 # sunny
-                self.drawweather("sunny.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["sunny.pam"], xoffset,0,40,clockfaceManager)
 
             else
                 # unknown
-                self.drawweather("unknown.pam",iconnumber,xoffset)
+                self.iconHandler.starticonlist(["unknown.pam"], xoffset,0,40,clockfaceManager)
             end
         end
     
@@ -123,19 +125,6 @@ class WeatherClockFace: BaseClockFace
     end
 
 
-    def drawweather(filename,iconnum,xoff)
-        if ( self.weatherfile[iconnum] == filename ) && ( self.weathericon[iconnum] != nil )
-            self.drawicon(self.weathericon[iconnum],xoff,0,40)
-        else
-            self.weatherfile[iconnum] = filename
-            self.weathericon[iconnum] = self.loadicon(filename)
-            if self.weathericon[iconnum] != nil
-                self.drawicon(self.weathericon[iconnum],xoff,0,40)
-            else 
-                log("WeatherClockFace: Couldn't load icon " + filename,1)
-            end
-        end
-    end
 end
 
 return WeatherClockFace

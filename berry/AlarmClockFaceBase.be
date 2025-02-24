@@ -313,7 +313,7 @@ class AlarmClockFaceBase: BaseClockFace
                      [nil,clockcolor,clockbackgroundcolor,clockbackgroundcolor,clockbackgroundcolor,clockcolor,nil],
                      [nil,nil,clockcolor,clockcolor,clockcolor,nil,nil]
                     ]
-        self.drawicon(clockicon,0,0,10)
+        self.drawsimpleicon(clockicon,0,0,10)
 
         if self.alarmstatus & 4
             #log("AlarmClockFace: Draw snooze",4)
@@ -325,7 +325,7 @@ class AlarmClockFaceBase: BaseClockFace
                         [nil,snoozecolor,nil,nil],
                         [snoozecolor,snoozecolor,snoozecolor,snoozecolor]
                        ]
-            self.drawicon(snoozeicon,1,0,10)
+            self.drawsimpleicon(snoozeicon,1,0,10)
         elif self.alarmstatus & 2
             #log("AlarmClockFace: Draw alarm",4)
             #self.draw_alarm()
@@ -334,7 +334,7 @@ class AlarmClockFaceBase: BaseClockFace
                            [alarmcolor,nil,alarmcolor,nil,alarmcolor,nil,alarmcolor],
                            [nil,alarmcolor,nil,alarmcolor,nil,nil,alarmcolor]
                           ]
-            self.drawicon(alarmicon,0,0,10)
+            self.drawsimpleicon(alarmicon,0,0,10)
         end
 
         var repeatdisplay
@@ -359,7 +359,7 @@ class AlarmClockFaceBase: BaseClockFace
                         [repcolor],
                         [repcolor]
                         ]
-            self.drawicon(repicon,6,5,10)
+            self.drawsimpleicon(repicon,6,5,10)
         elif repeatdisplay == 1
             #log("AlarmClockFace: Draw repeat",4)
             var repicon=[
@@ -367,7 +367,7 @@ class AlarmClockFaceBase: BaseClockFace
                          [repcolor,nil,repcolor],
                          [nil,repcolor,nil]
                          ]
-            self.drawicon(repicon,5,5,10)
+            self.drawsimpleicon(repicon,5,5,10)
         end
     end
 

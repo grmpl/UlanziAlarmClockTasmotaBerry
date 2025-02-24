@@ -13,7 +13,6 @@ import AlarmHandler
 
 import ClockClockFace
 import DateClockFace
-#import IconClockFace
 import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
@@ -26,7 +25,6 @@ import EnergysaveClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
-#    IconClockFace,
     WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
