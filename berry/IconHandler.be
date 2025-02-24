@@ -49,6 +49,7 @@ class IconHandler
     var Currentbuffer
     var Iconlist
     var Iconlistindex
+    var Clockfacemanager
 
     static var Loadcount=5
 
@@ -66,10 +67,11 @@ class IconHandler
         self.Iconlistindex=0
         self.Currentbuffer=0
         self.stopiconlist()
+        self.Clockfacemanager=clockfaceManager
         # Load first part of images into buffer
         var drawbuffer = self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer)
         # and start showing the buffer
-        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,clockfaceManager)
+        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager)
         return 0
     end
 
@@ -390,6 +392,7 @@ class IconHandler
                 
             for pixel:0..(width*height-1)
                 self.Iconbuffer[bufferslot] = self.Iconbuffer[bufferslot]..iconfile.readbytes(3)
+                # add alpha-channel
                 self.Iconbuffer[bufferslot].add(0xff,1)
             end            
             iconfile.close()
@@ -433,15 +436,19 @@ class IconHandler
             brightness = clockfaceManager.brightness
         end
 
+        # Draw complete icon
         for line:0..height-1
             for pixel:0..width-1
                 iconbufferindex += 4
-                if self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) > 127 
-                    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, self.Iconbuffer[iconbufferslot].get(iconbufferindex,-3),brightness)
-                else
+                # if self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) > 127 
+                matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 
+                                                        (self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) << 24 ) + 
+                                                                 self.Iconbuffer[iconbufferslot].get(iconbufferindex,-3),
+                                                        brightness,true)
+                #else
                     # Don't know how to handle transparency yet, so just paint it black
-                    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 0,brightness)
-                end
+                #    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 0,brightness)
+                #end
             end
         end
         matrixController.draw()
@@ -459,9 +466,13 @@ class IconHandler
     end
 
     def stopiconlist()
+        # stop deferred jobs
         tasmota.remove_timer("DrawIcon")
         tasmota.remove_timer("LoadIconPart0")
         tasmota.remove_timer("LoadIconPart1")
+        # Clear foreground
+        self.Clockfacemanager.matrixController.clear(true)
+        
     end
 
 

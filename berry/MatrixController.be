@@ -3,14 +3,15 @@ import json
 import fonts
 
 class MatrixController
+    # this version is using blend_color to enable continuous transparency - I'm not sure if this is a good idea
     var leds
     # var matrix # matrix does not work correctly, working without matrix
     var foreground
     var background
     var font
     var font_width
-    var row_size
-    var col_size
+    static var row_size=8
+    static var col_size=32
     var long_string
     var long_string_offset
 
@@ -20,8 +21,8 @@ class MatrixController
 
     def init()
         log("MatrixController Init",3)
-        self.row_size = 8
-        self.col_size = 32
+        #self.row_size = 8
+        #self.col_size = 32
         self.long_string = ""
         self.long_string_offset = 0
 
@@ -32,12 +33,19 @@ class MatrixController
             3 # There seems to be an RMT conflict with the default one causing pixel corruption
         )
         self.leds.gamma = false
+        # We do not use matrix, as matrix isn't working correctly in Tasmota 14.4
         # self.matrix = self.leds.create_matrix(self.col_size, self.row_size)
-        # this does not work:
-        # self.matrix.set_alternate(true)
+        # this does not work: matrix.set_alternate(true)
+        # and matrix.set_bytes neither
+        # Foreground and background are stored in buffers
+        # As we will use blend_color, foreground must be initialized with 0xff000000 - which means max transparency
         self.foreground=bytes(-(self.row_size*self.col_size)*4)
-        for i:0..256
-            self.foreground.set(i*4,0xFF000000,-4)
+        var fgblank=bytes()
+        for i:0..self.col_size-1
+            fgblank.add(0xff000000,-4)
+        end
+        for i:0..self.row_size-1
+            self.foreground.setbytes(i*self.col_size*4,fgblank)
         end
         self.background=bytes(-(self.row_size*self.col_size)*3)
 
@@ -50,21 +58,34 @@ class MatrixController
         self.prev_corrected_color = 0
     end
 
-    def clear()
-        var blank=bytes(-self.col_size*3)
+    def clear(fg)
 
-        for i:0..self.row_size-1
-            self.background.setbytes(i*self.col_size*3,blank)
+        if !fg
+            # Let's try if this works out - blend_color costs time, with this loop we will need ~50msec
+            # Alternatively we could handle transparency a either full or no and just set pixels_buffer to foreground, 
+            var blank=bytes(-self.col_size*3)
+            var fgmerge=bytes(-256*3)
+            for i:0..self.row_size-1
+                self.background.setbytes(i*self.col_size*3,blank)
+                for j:0..self.col_size-1
+                    fgmerge.set((i*self.col_size+j)*3, self.leds.blend_color( 0x000000, self.foreground.get((i*self.col_size+j)*4,-4)  ) , -3 )
+                end
+            end
+                self.leds.pixels_buffer().setbytes( 0 , fgmerge  ) 
+        else 
+            var fgblank=bytes()
+            for i:0..self.col_size-1
+                fgblank.add(0xff000000,-4)
+            end
+            for i:0..self.row_size-1
+                self.foreground.setbytes(i*self.col_size*4,fgblank)
+                self.leds.pixels_buffer().setbytes(i*self.col_size*3,self.background[i*self.col_size*3..],0,32*3)
+            end
         end
 
     end
 
     def draw()
-        for i:0..self.row_size-1
-            self.leds.pixels_buffer().setbytes( i*self.col_size*3, 
-                                              self.background[i*3*self.col_size..(i*self.col_size+self.col_size-1)*3] )
-        end
-        self.leds.dirty()
         self.leds.show()
     end
 
@@ -75,7 +96,11 @@ class MatrixController
 
     # x is the column, y is the row, (0,0) from the top left
     def set_matrix_pixel_color(x, y, color, brightness, fg) #
-        # if y is odd, reverse the order of y
+        # background should be controlled by Clockface, foreground can be set by any other routine and will overlay background
+        # save and remove alpha-value, to_gamma is not prepared for 4-bytes values
+        var alpha = color & 0xff000000
+        color = color & 0x00ffffff
+        # if y is odd, reverse the order of y (LED-strip is laid in zigzag, matrix with set_alternate doesn't work correctly)
         if y % 2 == 1
             x = self.col_size - x - 1
         end
@@ -92,18 +117,21 @@ class MatrixController
             self.prev_corrected_color = self.to_gamma(color, brightness)
         end
 
-        # #call the native function directly, bypassing set_matrix_pixel_color, to_gamma etc
-        # #this is faster as otherwise to_gamma would be called for every single pixel even if they are the same
-        # Not really: 35msec instead of 40msec for 256 pixels but we need the code for efficient foreground-blending
-           # self.leds.call_native(10, y * self.col_size + x, self.prev_corrected_color)
+        var pixelnum = x + y*self.col_size
         if !fg
-            self.background.set( (x+y*self.col_size)*3 , 
-                                 self.leds.blend_color( self.prev_corrected_color , 
-                                                        self.foreground.get( (x+y*self.col_size)*4 , -4 ) ) ,
-                                 -3 )
+            self.background.set( pixelnum*3 , self.prev_corrected_color, -3 )
+            self.leds.pixels_buffer().set( pixelnum*3 , 
+                                           self.leds.blend_color( self.prev_corrected_color , 
+                                                                  self.foreground.get( pixelnum*4 , -4 ) ) ,
+                                           -3 )
         else
-            self.foreground.set((x+y*self.col_size)*3 , self.prev_corrected_color,-4)
+            var trgb=self.prev_corrected_color + (0xff000000-alpha) # blend_color needs inverted alpha-value
+            self.foreground.set(pixelnum*4 , trgb,-4)
+            self.leds.pixels_buffer().set( pixelnum*3 , 
+                                           self.leds.blend_color( self.background.get( pixelnum*3 , -3 ), trgb  ) ,
+                                           -3 )
         end
+        self.leds.dirty()
     end
 
     # set pixel column to binary value
