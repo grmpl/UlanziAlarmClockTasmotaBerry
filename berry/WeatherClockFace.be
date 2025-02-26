@@ -9,15 +9,19 @@ class WeatherClockFace: BaseClockFace
     var iconHandler
     var weather
     var weathericon 
-    var weatherfile
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
         self.matrixController.clear()
         self.weather = Weather()
-        self.weathericon=[[nil],[nil]]
-        self.weatherfile=["",""]
+        self.weathericon=[[],[]]
         self.iconHandler=IconHandler()
+    end
+
+    def deinit()
+        self.iconHandler.stopiconlist("WeatherCFDrawid0")
+        self.iconHandler.stopiconlist("WeatherCFDrawid1")
+        self.matrixController.clear(true)
     end
 
     def render()
@@ -83,45 +87,55 @@ class WeatherClockFace: BaseClockFace
 
         # Display weather icon
             var wmo=wmocode[iconnumber]
-            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 )
-                self.iconHandler.starticonlist(["beach.pam"], xoffset,0,40,clockfaceManager)
-            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 )
-                self.iconHandler.starticonlist(["beer.pam"], xoffset,0,40,clockfaceManager)
-            elif wmo == 1 
-                self.iconHandler.starticonlist(["cloudy1.pam"], xoffset,0,40,clockfaceManager)
-                
-            elif wmo == 2
-                self.iconHandler.starticonlist(["cloudy2.pam"], xoffset,0,40,clockfaceManager)
-                
-            elif wmo == 3 || wmo == 45 || wmo == 48
-                # cloudy (1-3) /fog (45,48)
-                self.iconHandler.starticonlist(["cloudy3.pam"], xoffset,0,40,clockfaceManager)
-
-            elif wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
-                wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
-                wmo == 80 || wmo == 81 || wmo == 82 
-                # rain, 56,57,66,67 with ice
-                self.iconHandler.starticonlist(["rainy.pam"], xoffset,0,40,clockfaceManager)
+            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 ) && ( self.weathericon[iconnumber] != "beach.pam" )
+                self.showweathericon(iconnumber,"beach.pam",xoffset)
+            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 ) && ( self.weathericon[iconnumber] != "beer.pam" )
+                self.showweathericon(iconnumber,"beer.pam",xoffset)
             
-            elif wmo == 95 || wmo == 96 || wmo == 99
+            elif wmo == 1 && ( self.weathericon[iconnumber] != "cloudy1.pam" )
+                self.showweathericon(iconnumber,"cloudy1.pam",xoffset)
+                
+            elif wmo == 2 && ( self.weathericon[iconnumber] != "cloudy2.pam" )
+                self.showweathericon(iconnumber,"cloudy2.pam",xoffset)
+                
+            elif ( wmo == 3 || wmo == 45 || wmo == 48 ) && ( self.weathericon[iconnumber] != "cloudy3.pam" )
+                # cloudy (1-3) /fog (45,48)
+                self.showweathericon(iconnumber,"cloudy3.pam",xoffset)
+
+            elif ( wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
+                wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
+                wmo == 80 || wmo == 81 || wmo == 82 ) && ( self.weathericon[iconnumber] != "rainy.pam" )
+                # rain, 56,57,66,67 with ice
+                self.showweathericon(iconnumber,"rainy.pam",xoffset)
+            
+            elif ( wmo == 95 || wmo == 96 || wmo == 99 ) && ( self.weathericon[iconnumber] != "lightning.pam" )
                 # 95,96,99 thunderstorm
-                self.iconHandler.starticonlist(["lightning.pam"], xoffset,0,40,clockfaceManager)
+                self.showweathericon(iconnumber,"lightning.pam",xoffset)
 
-            elif wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86
+            elif ( wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86 ) && ( self.weathericon[iconnumber] != "snowfall.pam" )
                 # snow
-                self.iconHandler.starticonlist(["snowfall.pam"], xoffset,0,40,clockfaceManager)
+                self.showweathericon(iconnumber,"snowfall.pam",xoffset)
 
-            elif wmo == 0 
+            elif wmo == 0 && ( self.weathericon[iconnumber] != "sunny.pam" )
                 # sunny
-                self.iconHandler.starticonlist(["sunny.pam"], xoffset,0,40,clockfaceManager)
+                self.showweathericon(iconnumber,"sunny.pam",xoffset)
 
             else
                 # unknown
-                self.iconHandler.starticonlist(["unknown.pam"], xoffset,0,40,clockfaceManager)
+                self.showweathericon(iconnumber,"unknown.pam",xoffset)
             end
         end
     
         
+    end
+
+    def showweathericon(iconnumber,filename,xoffset)
+        var timerid="WeatherCFDrawid"+str(iconnumber)
+        self.weathericon[iconnumber] = filename
+        self.iconHandler.stopiconlist(timerid)
+        self.matrixController.clear(true)
+        self.iconHandler.starticonlist([filename], xoffset,0,40,self.clockfaceManager,timerid)
+        log("Weatherclockface call starticon with: " + str(timerid),2)
     end
 
 

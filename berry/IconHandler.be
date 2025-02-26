@@ -62,7 +62,7 @@ class IconHandler
         self.stopiconlist()
     end
 
-    def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager) # starts displaying a list of icon-files
+    def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager,drawid) # starts displaying a list of icon-files
         self.Iconlist=iconlist
         self.Iconlistindex=0
         self.Currentbuffer=0
@@ -71,7 +71,7 @@ class IconHandler
         # Load first part of images into buffer
         var drawbuffer = self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer)
         # and start showing the buffer
-        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager)
+        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager,drawid)
         return 0
     end
 
@@ -410,7 +410,7 @@ class IconHandler
     end
 
 
-    def drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager)
+    def drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager,drawid)
         #clockfaceManager.energysaveoverride=tasmota.millis()
         #log("drawmultipleicons called with " + str(iconbufferslot) + " " + str(iconbufferindex) + " " + str(clockfaceManager),2 )
         var listsize = size(self.Iconlist)
@@ -454,24 +454,27 @@ class IconHandler
         matrixController.draw()
         iconbufferindex += 4
 
-
+        if drawid == nil
+            drawid = "DrawIcon"
+        end
 
         #log("Drawn, Index at " + str(iconbufferindex) + " delay at " + str(delay) + " size Iconbuffer " + str(size(self.Iconbuffer[iconbufferslot])) + " Currentbuffer " + str(self.Currentbuffer),2)
         if iconbufferindex < size(self.Iconbuffer[iconbufferslot]) # if images left in iconbuffer, trigger draw of next image
-            tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), "DrawIcon" )
+            tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), drawid )
         else # draw image from next iconbuffer (could be the same if only one icon in iconlist)
-            tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), "DrawIcon" )
+            tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), drawid )
         end
             
     end
 
-    def stopiconlist()
+    def stopiconlist(drawid)
         # stop deferred jobs
-        tasmota.remove_timer("DrawIcon")
+        if drawid == nil
+            drawid = "DrawIcon"
+        end
+        tasmota.remove_timer(drawid)
         tasmota.remove_timer("LoadIconPart0")
         tasmota.remove_timer("LoadIconPart1")
-        # Clear foreground
-        self.Clockfacemanager.matrixController.clear(true)
         
     end
 

@@ -5,8 +5,6 @@ import BaseClockFace
 import IconHandler
 
 class DateClockFace: BaseClockFace
-    var clockfaceManager
-    var matrixController
     var iconHandler
     var showYear
 
@@ -18,7 +16,8 @@ class DateClockFace: BaseClockFace
     end
 
     def deinit()
-        self.iconHandler.stopiconlist()
+        self.iconHandler.stopiconlist("DateCFDrawid")
+        self.matrixController.clear(true)
     end
 
     def handleActionButton(value)
@@ -40,7 +39,9 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(31, 0, 0x0000ff,self.clockfaceManager.brightness)
         end
         if self.showYear != true
-            self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,clockfaceManager) 
+            self.iconHandler.stopiconlist("DateCFDrawid")
+            self.matrixController.clear(true)
+            self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager,"DateCFDrawid") 
 
             self.matrixController.change_font('MatrixDisplay3x5')
             x_offset = 12
@@ -53,6 +54,7 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(x_offset+18, y_offset+4, self.clockfaceManager.color, self.clockfaceManager.brightness)
         else
             self.iconHandler.stopiconlist()
+            self.matrixController.clear(true)
             self.matrixController.change_font('MatrixDisplay3x5')
             x_offset = 5
             y_offset = 2
