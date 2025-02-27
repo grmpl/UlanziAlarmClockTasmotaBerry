@@ -25,7 +25,7 @@ import EnergysaveClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
-    #WeatherClockFace, 
+    WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
     Alarm3ClockFace,

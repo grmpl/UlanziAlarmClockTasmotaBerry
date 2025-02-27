@@ -16,7 +16,7 @@ class DateClockFace: BaseClockFace
     end
 
     def deinit()
-        self.iconHandler.stopiconlist("DateCFDrawid")
+        self.iconHandler.stopiconlist()
         self.matrixController.clear(true)
     end
 
@@ -39,9 +39,12 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(31, 0, 0x0000ff,self.clockfaceManager.brightness)
         end
         if self.showYear != true
-            self.iconHandler.stopiconlist("DateCFDrawid")
-            self.matrixController.clear(true)
-            self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager,"DateCFDrawid") 
+            var iotdlist = persist.member("iotdlist")
+            if !self.iconHandler.IconlistRunning || self.iconHandler.Iconlist != iotdlist
+                self.iconHandler.stopiconlist()
+                self.matrixController.clear(true)
+                self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager,"DateCFDrawid") 
+            end
 
             self.matrixController.change_font('MatrixDisplay3x5')
             x_offset = 12

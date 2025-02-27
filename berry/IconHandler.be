@@ -49,7 +49,9 @@ class IconHandler
     var Currentbuffer
     var Iconlist
     var Iconlistindex
+    var IconlistRunning
     var Clockfacemanager
+    var InstanceID
 
     static var Loadcount=5
 
@@ -59,19 +61,27 @@ class IconHandler
         self.Currentbuffer=0 # index which of both buffers to use
         self.Iconlist=[] # a list of files containing image data
         self.Iconlistindex=0 # index for the list of files
-        self.stopiconlist()
+        self.InstanceID=str(tasmota.millis())
+        self.IconlistRunning=false
+    end
+
+    def deinit()
+        tasmota.remove_timer(self.InstanceID)
+        self.IconlistRunning=false
     end
 
     def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager,drawid) # starts displaying a list of icon-files
         self.Iconlist=iconlist
         self.Iconlistindex=0
         self.Currentbuffer=0
-        self.stopiconlist()
         self.Clockfacemanager=clockfaceManager
+        # stop any running list
+        self.stopiconlist()
         # Load first part of images into buffer
         var drawbuffer = self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer)
         # and start showing the buffer
-        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager,drawid)
+        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager)
+        self.IconlistRunning=true
         return 0
     end
 
@@ -251,8 +261,7 @@ class IconHandler
             
             # Checking for further images to load
             if newfindex < iconfile.size() # if end of file is not reached, trigger loading next part
-                var timerident="LoadIconPart"+str(bufferslot)
-                tasmota.set_timer(100,/->self.loadiconpart(filename,newfindex,maxnumber,bufferslot),timerident)
+                tasmota.set_timer(100,/->self.loadiconpart(filename,newfindex,maxnumber,bufferslot),self.InstanceID)
             end
             iconfile.close()
             return bufferslot
@@ -417,8 +426,7 @@ class IconHandler
         if listsize > 1 && iconbufferindex == 0 # trigger load of next buffer in background if iconlist > 1 and we are at beginning
             self.Iconlistindex = ( self.Iconlistindex + 1 ) % listsize
             self.Currentbuffer = ( self.Currentbuffer + 1 ) % 2
-            var timerident="LoadIconPart"+str(self.Currentbuffer)
-            tasmota.set_timer(500,/->self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer),timerident)
+            tasmota.set_timer(500,/->self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer),self.InstanceID)
         end
         # draw icon at index of iconbuffer, determine delay, set newindex
         if self.Iconbuffer[iconbufferslot] == nil
@@ -460,21 +468,17 @@ class IconHandler
 
         #log("Drawn, Index at " + str(iconbufferindex) + " delay at " + str(delay) + " size Iconbuffer " + str(size(self.Iconbuffer[iconbufferslot])) + " Currentbuffer " + str(self.Currentbuffer),2)
         if iconbufferindex < size(self.Iconbuffer[iconbufferslot]) # if images left in iconbuffer, trigger draw of next image
-            tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), drawid )
+            tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), self.InstanceID )
         else # draw image from next iconbuffer (could be the same if only one icon in iconlist)
-            tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), drawid )
+            tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), self.InstanceID )
         end
             
     end
 
-    def stopiconlist(drawid)
+    def stopiconlist()
         # stop deferred jobs
-        if drawid == nil
-            drawid = "DrawIcon"
-        end
-        tasmota.remove_timer(drawid)
-        tasmota.remove_timer("LoadIconPart0")
-        tasmota.remove_timer("LoadIconPart1")
+        tasmota.remove_timer(self.InstanceID)
+        self.IconlistRunning=false
         
     end
 

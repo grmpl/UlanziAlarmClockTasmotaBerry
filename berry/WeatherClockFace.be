@@ -15,12 +15,15 @@ class WeatherClockFace: BaseClockFace
         self.matrixController.clear()
         self.weather = Weather()
         self.weathericon=[[],[]]
-        self.iconHandler=IconHandler()
+        var iconhandler1=IconHandler()
+        tasmota.delay(1)
+        var iconhandler2=IconHandler()
+        self.iconHandler=[iconhandler1,iconhandler2]
     end
 
     def deinit()
-        self.iconHandler.stopiconlist("WeatherCFDrawid0")
-        self.iconHandler.stopiconlist("WeatherCFDrawid1")
+        self.iconHandler[0].stopiconlist()
+        self.iconHandler[1].stopiconlist()
         self.matrixController.clear(true)
     end
 
@@ -87,36 +90,36 @@ class WeatherClockFace: BaseClockFace
 
         # Display weather icon
             var wmo=wmocode[iconnumber]
-            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 ) && ( self.weathericon[iconnumber] != "beach.pam" )
+            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 ) 
                 self.showweathericon(iconnumber,"beach.pam",xoffset)
-            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 ) && ( self.weathericon[iconnumber] != "beer.pam" )
+            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 ) 
                 self.showweathericon(iconnumber,"beer.pam",xoffset)
             
-            elif wmo == 1 && ( self.weathericon[iconnumber] != "cloudy1.pam" )
+            elif wmo == 1 
                 self.showweathericon(iconnumber,"cloudy1.pam",xoffset)
                 
-            elif wmo == 2 && ( self.weathericon[iconnumber] != "cloudy2.pam" )
+            elif wmo == 2 
                 self.showweathericon(iconnumber,"cloudy2.pam",xoffset)
                 
-            elif ( wmo == 3 || wmo == 45 || wmo == 48 ) && ( self.weathericon[iconnumber] != "cloudy3.pam" )
+            elif ( wmo == 3 || wmo == 45 || wmo == 48 ) 
                 # cloudy (1-3) /fog (45,48)
                 self.showweathericon(iconnumber,"cloudy3.pam",xoffset)
 
             elif ( wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
                 wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
-                wmo == 80 || wmo == 81 || wmo == 82 ) && ( self.weathericon[iconnumber] != "rainy.pam" )
+                wmo == 80 || wmo == 81 || wmo == 82 ) 
                 # rain, 56,57,66,67 with ice
                 self.showweathericon(iconnumber,"rainy.pam",xoffset)
             
-            elif ( wmo == 95 || wmo == 96 || wmo == 99 ) && ( self.weathericon[iconnumber] != "lightning.pam" )
+            elif ( wmo == 95 || wmo == 96 || wmo == 99 ) 
                 # 95,96,99 thunderstorm
                 self.showweathericon(iconnumber,"lightning.pam",xoffset)
 
-            elif ( wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86 ) && ( self.weathericon[iconnumber] != "snowfall.pam" )
+            elif ( wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86 ) 
                 # snow
                 self.showweathericon(iconnumber,"snowfall.pam",xoffset)
 
-            elif wmo == 0 && ( self.weathericon[iconnumber] != "sunny.pam" )
+            elif wmo == 0
                 # sunny
                 self.showweathericon(iconnumber,"sunny.pam",xoffset)
 
@@ -130,12 +133,12 @@ class WeatherClockFace: BaseClockFace
     end
 
     def showweathericon(iconnumber,filename,xoffset)
-        var timerid="WeatherCFDrawid"+str(iconnumber)
-        self.weathericon[iconnumber] = filename
-        self.iconHandler.stopiconlist(timerid)
-        self.matrixController.clear(true)
-        self.iconHandler.starticonlist([filename], xoffset,0,40,self.clockfaceManager,timerid)
-        log("Weatherclockface call starticon with: " + str(timerid),2)
+        if !self.iconHandler[iconnumber].IconlistRunning || self.iconHandler[iconnumber].Iconlist != [filename]
+            self.iconHandler[iconnumber].stopiconlist()
+            self.matrixController.clear(true,xoffset,0,8,8)
+            self.iconHandler[iconnumber].starticonlist([filename], xoffset,0,40,self.clockfaceManager)
+            #log("Weatherclockface call starticon with: " + str(timerid),2)
+        end
     end
 
 

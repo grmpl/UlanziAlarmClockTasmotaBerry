@@ -58,9 +58,9 @@ class MatrixController
         self.prev_corrected_color = 0
     end
 
-    def clear(fg)
+    def clear(fg,x,y,w,h)
 
-        if !fg
+        if !fg # not foreground
             # Let's try if this works out - blend_color costs time, with this loop we will need ~50msec
             # Alternatively we could handle transparency a either full or no and just set pixels_buffer to foreground, 
             var blank=bytes(-self.col_size*3)
@@ -73,13 +73,26 @@ class MatrixController
             end
                 self.leds.pixels_buffer().setbytes( 0 , fgmerge  ) 
         else 
+            if x == nil || x >= self.col_size
+                x = 0
+            end
+            if y == nil || y >= self.row_size
+                y = 0
+            end
+            if w == nil || x+w > self.col_size
+                w = self.col_size-x
+            end
+            if h == nil || y+w > self.row_size
+                h = self.row_size-y
+            end
+            
             var fgblank=bytes()
-            for i:0..self.col_size-1
+            for i:1..w
                 fgblank.add(0xff000000,-4)
             end
-            for i:0..self.row_size-1
-                self.foreground.setbytes(i*self.col_size*4,fgblank)
-                self.leds.pixels_buffer().setbytes(i*self.col_size*3,self.background[i*self.col_size*3..],0,32*3)
+            for i:0..h-1
+                self.foreground.setbytes(( (y+i) * self.col_size + x) * 4,fgblank)
+                self.leds.pixels_buffer().setbytes(( (y+i) * self.col_size + x ) * 3,self.background[( (y+i) * self.col_size +x ) * 3..],0,w*3)
             end
         end
 
