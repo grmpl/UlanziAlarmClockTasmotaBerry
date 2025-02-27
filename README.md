@@ -1,4 +1,4 @@
-# Tasmota-Ulanzi-AlarmClock with ULP-based buzzer
+# Tasmota-Ulanzi-AlarmClock with ULP-based buzzer and possibility to display animated icons
 Tasmota Berry Implementation of an Alarm Clock on a Ulanzi TC001 with a ULP-based buzzer.
 
 The code is based on the works of https://github.com/iliaan/ulanzi-lab and https://github.com/Hypfer/ulanzi-tc001-tasmota . Thanks a lot to them.
@@ -34,8 +34,8 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Activating and deactivating of timers is possible at the clock.
 - You have multiple displays, which you can choose from by pressing left and right button.
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
-- Next display shows the date. You can switch to big display by pressing the middle button.
-- Next display shows the weather at noon and 6 PM for current day. You have to upload icons in pam- or ppm-format with correct filename into tasmota filesystem for this face. See WeatherClockFace.be. I haven't put the icons on github due to possible license issues.
+- Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. The managing of the list is possible with MQTT, but only rudimentary implemented. Please look in the source code for further information. Icons are not part of the source on Github due to possible licensing issues.
+- Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here again icons would be displayed if files are uploaded to the device. Please look at source code.
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
 Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, it can be changed with left and right button. With `setoption13 1` quick button presses and long press is possible for faster value change. (Note: Don't hold for too long, otherwise setoption13 will be deactivated - seems to be a Tasmota feature). Short press of middle butten switches to next value, long press saves new timer setting. 
 - If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be increased in time. During alarm *any* button press on any face will activate Snooze.
@@ -63,6 +63,6 @@ Editing of alarm is possible by long press of middle button. The value to be cha
         #define USE_BERRY_ULP      // (ESP32, ESP32S2 and ESP32S3 only) Add support for the ULP via Berry (+5k flash)
         #endif
 ```
-
+- Icon-files have to be converted with netpbm-tools or convert from imagemagick. Necessary commandlines can be found in comment of IconHandler.be .
 
 
