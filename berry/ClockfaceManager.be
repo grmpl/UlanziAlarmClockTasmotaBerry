@@ -293,6 +293,9 @@ class ClockfaceManager
             if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
                 log("ClockfaceManager: Activated energysaveClockFace",3)
                 self.energysaveClockfaceActive = true
+                #I'm not sure why, but deinit isn't called correctly when switching to EnergyClockFace, so we have to call it explicitely.
+                # Otherwise the timers from IconHandler will not be removed. Seems to be some timing issue.
+                self.currentClockFace.deinit()
                 self.currentClockFace=EnergysaveClockFace(self) # init clockface
             elif ( voltage > uenergysavefaceh ) && self.energysaveClockfaceActive# use a hysteresis
                 log("ClockfaceManager: Deactivated energysaveClockFace",3)

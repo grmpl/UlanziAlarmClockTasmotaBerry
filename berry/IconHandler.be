@@ -52,6 +52,8 @@ class IconHandler
     var IconlistRunning
     var Clockfacemanager
     var InstanceID
+    var PrevWidth
+    var PrevHeight
 
     static var Loadcount=5
 
@@ -66,8 +68,10 @@ class IconHandler
     end
 
     def deinit()
+        #log("IconHandler: Deinit start",2)
         tasmota.remove_timer(self.InstanceID)
         self.IconlistRunning=false
+        #log("IconHandler: Deinit finish",2)
     end
 
     def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager,drawid) # starts displaying a list of icon-files
@@ -255,7 +259,7 @@ class IconHandler
                 if ( counter < maxnumber ) && ( readbuffer.size() < ( buffersize / 2 ) )
                     readbuffer = readbuffer..iconfile.readbytes(buffersize)
                 end
-                log("end while " + str(tasmota.get_free_heap()),2)
+                #log("end while " + str(tasmota.get_free_heap()),2)
 
             end
             
@@ -423,20 +427,22 @@ class IconHandler
         #clockfaceManager.energysaveoverride=tasmota.millis()
         #log("drawmultipleicons called with " + str(iconbufferslot) + " " + str(iconbufferindex) + " " + str(clockfaceManager),2 )
         var listsize = size(self.Iconlist)
+        var matrixController=clockfaceManager.matrixController
         if listsize > 1 && iconbufferindex == 0 # trigger load of next buffer in background if iconlist > 1 and we are at beginning
             self.Iconlistindex = ( self.Iconlistindex + 1 ) % listsize
             self.Currentbuffer = ( self.Currentbuffer + 1 ) % 2
             tasmota.set_timer(500,/->self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer),self.InstanceID)
+            # and wipe previous icon
+            matrixController.clear(true, xoffset, yoffset, self.PrevWidth, self.PrevHeight)
         end
         # draw icon at index of iconbuffer, determine delay, set newindex
         if self.Iconbuffer[iconbufferslot] == nil
             return
         end
-        var matrixController=clockfaceManager.matrixController
         var brightness
         var delay = self.Iconbuffer[iconbufferslot].get(iconbufferindex,-2)
-        var width = self.Iconbuffer[iconbufferslot].get(iconbufferindex+2,1)
-        var height = self.Iconbuffer[iconbufferslot].get(iconbufferindex+3,1)
+        self.PrevWidth = self.Iconbuffer[iconbufferslot].get(iconbufferindex+2,1)
+        self.PrevHeight = self.Iconbuffer[iconbufferslot].get(iconbufferindex+3,1)
         
         if clockfaceManager.brightness < minbright
             brightness = minbright
@@ -445,18 +451,13 @@ class IconHandler
         end
 
         # Draw complete icon
-        for line:0..height-1
-            for pixel:0..width-1
+        for line:0..self.PrevHeight-1
+            for pixel:0..self.PrevWidth-1
                 iconbufferindex += 4
-                # if self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) > 127 
                 matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 
                                                         (self.Iconbuffer[iconbufferslot].get(iconbufferindex+3) << 24 ) + 
                                                                  self.Iconbuffer[iconbufferslot].get(iconbufferindex,-3),
                                                         brightness,true)
-                #else
-                    # Don't know how to handle transparency yet, so just paint it black
-                #    matrixController.set_matrix_pixel_color(xoffset+pixel, yoffset+line, 0,brightness)
-                #end
             end
         end
         matrixController.draw()
@@ -468,8 +469,10 @@ class IconHandler
 
         #log("Drawn, Index at " + str(iconbufferindex) + " delay at " + str(delay) + " size Iconbuffer " + str(size(self.Iconbuffer[iconbufferslot])) + " Currentbuffer " + str(self.Currentbuffer),2)
         if iconbufferindex < size(self.Iconbuffer[iconbufferslot]) # if images left in iconbuffer, trigger draw of next image
+            # all images in one iconfile should have same size, otherwise we would have to call a timeconsuming clear every time
             tasmota.set_timer(delay,/->self.drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright,clockfaceManager), self.InstanceID )
         else # draw image from next iconbuffer (could be the same if only one icon in iconlist)
+            # have to wipe current icon first, as next icon could be different size
             tasmota.set_timer(delay,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), self.InstanceID )
         end
             

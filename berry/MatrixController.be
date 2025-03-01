@@ -6,7 +6,7 @@ class MatrixController
     # this version is using blend_color to enable continuous transparency - I'm not sure if this is a good idea
     var leds
     # var matrix # matrix does not work correctly, working without matrix
-    var foreground
+    var foreground 
     var background
     var font
     var font_width
@@ -91,8 +91,14 @@ class MatrixController
                 fgblank.add(0xff000000,-4)
             end
             for i:0..h-1
-                self.foreground.setbytes(( (y+i) * self.col_size + x) * 4,fgblank)
-                self.leds.pixels_buffer().setbytes(( (y+i) * self.col_size + x ) * 3,self.background[( (y+i) * self.col_size +x ) * 3..],0,w*3)
+                if (y+i) % 2 == 1 # odd lines - reverse
+                    self.foreground.setbytes(( (y+i+1) * self.col_size - x - w) * 4,fgblank)
+                    self.leds.pixels_buffer().setbytes(( (y+i+1) * self.col_size - x - w) * 3,self.background[( (y+i+1) * self.col_size - x - w) * 3..],0,w*3)
+                else 
+                    self.foreground.setbytes(( (y+i) * self.col_size + x) * 4,fgblank)
+                    self.leds.pixels_buffer().setbytes(( (y+i) * self.col_size + x ) * 3,self.background[( (y+i) * self.col_size +x ) * 3..],0,w*3)
+                end
+
             end
         end
 

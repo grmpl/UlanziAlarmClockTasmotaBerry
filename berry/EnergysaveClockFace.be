@@ -6,6 +6,7 @@ class EnergysaveClockFace: BaseClockFace
 
 
     def init(clockfaceManager)
+        #log("Energyclocksave: Init start",2)
         super(self).init(clockfaceManager)
         self.matrixController.clear()
         self.Pixelnum=tasmota.millis() & 0x000000ff # get a somewhat random 0<=number<=255

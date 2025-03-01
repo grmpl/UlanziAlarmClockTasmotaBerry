@@ -135,7 +135,7 @@ class WeatherClockFace: BaseClockFace
     def showweathericon(iconnumber,filename,xoffset)
         if !self.iconHandler[iconnumber].IconlistRunning || self.iconHandler[iconnumber].Iconlist != [filename]
             self.iconHandler[iconnumber].stopiconlist()
-            self.matrixController.clear(true,xoffset,0,8,8)
+            self.matrixController.clear(true,xoffset,0,16,8) # clear this half of the screen
             self.iconHandler[iconnumber].starticonlist([filename], xoffset,0,40,self.clockfaceManager)
             #log("Weatherclockface call starticon with: " + str(timerid),2)
         end

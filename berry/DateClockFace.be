@@ -16,8 +16,10 @@ class DateClockFace: BaseClockFace
     end
 
     def deinit()
+        #log("DateClockFace: Deinit start",2)
         self.iconHandler.stopiconlist()
         self.matrixController.clear(true)
+        #log("DateClockFace: Deinit end",2)
     end
 
     def handleActionButton(value)
