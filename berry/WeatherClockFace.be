@@ -82,9 +82,9 @@ class WeatherClockFace: BaseClockFace
             self.matrixController.print_string(temp_str[iconnumber],8 + xoffset,3, false, temp_color[iconnumber], self.clockfaceManager.brightness)
         
             if temp_neg[iconnumber] 
-                self.matrixController.set_matrix_pixel_color((10 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
-                self.matrixController.set_matrix_pixel_color((11 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
                 self.matrixController.set_matrix_pixel_color((12 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color((13 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color((14 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
             end
 
 
@@ -96,20 +96,20 @@ class WeatherClockFace: BaseClockFace
                 self.showweathericon(iconnumber,"beer.pam",xoffset)
             
             elif wmo == 1 
-                self.showweathericon(iconnumber,"cloudy1.pam",xoffset)
+                self.showweathericon(iconnumber,"cloudy1_16x8.miff",xoffset)
                 
             elif wmo == 2 
-                self.showweathericon(iconnumber,"cloudy2.pam",xoffset)
+                self.showweathericon(iconnumber,"cloudy2_16x8.miff",xoffset)
                 
             elif ( wmo == 3 || wmo == 45 || wmo == 48 ) 
                 # cloudy (1-3) /fog (45,48)
-                self.showweathericon(iconnumber,"cloudy3.pam",xoffset)
+                self.showweathericon(iconnumber,"cloudy3_16x8.miff",xoffset)
 
             elif ( wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
                 wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
                 wmo == 80 || wmo == 81 || wmo == 82 ) 
                 # rain, 56,57,66,67 with ice
-                self.showweathericon(iconnumber,"rainy.pam",xoffset)
+                self.showweathericon(iconnumber,"rainy.miff",xoffset)
             
             elif ( wmo == 95 || wmo == 96 || wmo == 99 ) 
                 # 95,96,99 thunderstorm
