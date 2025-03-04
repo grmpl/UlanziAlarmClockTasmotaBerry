@@ -64,7 +64,7 @@ class MatrixController
             # Let's try if this works out - blend_color costs time, with this loop we will need ~50msec
             # Alternatively we could handle transparency a either full or no and just set pixels_buffer to foreground, 
             var blank=bytes(-self.col_size*3)
-            var fgmerge=bytes(-256*3)
+            var fgmerge=bytes(-self.col_size*self.row_size*3) # is speed really worth allocating a complete display buffer? Could be done in lines
             for i:0..self.row_size-1
                 self.background.setbytes(i*self.col_size*3,blank)
                 for j:0..self.col_size-1
