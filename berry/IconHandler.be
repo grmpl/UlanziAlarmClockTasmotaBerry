@@ -132,7 +132,7 @@ class IconHandler
                 counter += 1
                 freemem = tasmota.get_free_heap()
                 #log("start while " + str(freemem),2)
-                if freemem < 30000 # ensure we have enough memory for loading file
+                if freemem < 35000 # ensure we have enough memory for loading file
                     log("IconHandler: MIFF-File too big, not enough heap memory left, Free heap: " + str(freemem),1)
                     iconfile.close()
                     return nil

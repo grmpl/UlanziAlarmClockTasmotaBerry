@@ -66,7 +66,8 @@ Editing of alarm is possible by long press of middle button. The value to be cha
         #endif
 ```
 - Icon-files have to be converted with netpbm-tools or convert from imagemagick. Necessary commandlines can be found in comment of IconHandler.be.
-- This code is consuming a lot of memory and there is a lot of long running Berry code. It's running stable even with two animations on the date face, one of them having 50 images, but the system is running at the limit. 
+- The code does have a lot of long running Berry code. Don't expect too much from a performance point of view. I tried to avoid too long blocking by deferred executions, but there are still blocks which would run several 100 msec. I'm happy with current response time, so I didn't do any more optimization.
+- The code is consuming a lot of memory, too. Most letters in fonts.be are disabled therefore to save memory. With this setting clock is running stable. If you want to display more text and still use IconHandler you have to try out how far you can go. With all fonts enabled, I didn't get a stable system, even without displaying any additional text. Omitting TinyUnicode font could be just enough to have a stable system, because it's very large, but I haven't tried.
  
 
 

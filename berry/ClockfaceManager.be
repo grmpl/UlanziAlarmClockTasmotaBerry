@@ -65,7 +65,7 @@ class ClockfaceManager
         self.lowerbrightnessActive = false
 
         self.brightness = 50;
-        self.color = fonts.palette['red']
+        self.color = 0xff0000
 
         self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
         self.matrixController.draw()
