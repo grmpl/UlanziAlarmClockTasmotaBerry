@@ -39,7 +39,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. Icons for this face are not part of github, due to possible license issues. The managing of the list is possible with MQTT. Topic for changes is tasmberry/<device topic>/iotd, result will be given in tasmberry/<device topic>/iotdout. Commands can be sent with JSON-payload:
   - `{"action": "addentry", "filename": "beer.pam"}` would add icon beer.pam to the icon list, file beer.pam must exist already
   - `{"action": "removeentry", "filename": "beer.pam"}` would remove icon beer.pam from the icon list
-  - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really.
+  - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really usefull
   - `{"action": "removefile", "filename": "test.pam"}` would remove file from filesystem and out of icon list.
   - `{"action": "showiotdlist"}` would show current icon list
 - Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use. I've put a few self created icons in the specialicons-folder for reference. 
