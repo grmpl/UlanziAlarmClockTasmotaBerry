@@ -12,7 +12,7 @@ class WeatherClockFace: BaseClockFace
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
+        # self.matrixController.clear()
         self.weather = Weather()
         self.weathericon=[[],[]]
         var iconhandler1=IconHandler()
@@ -22,9 +22,16 @@ class WeatherClockFace: BaseClockFace
     end
 
     def deinit()
+        # Calling foreign methods in the destructor is a bad idea, see https://github.com/arendst/Tasmota/discussions/23148 
+        # self.iconHandler[0].stopiconlist()
+        # self.iconHandler[1].stopiconlist()
+        # self.matrixController.clear(true)
+    end
+
+    def close()
+        # Cleanup of class-specific objects
         self.iconHandler[0].stopiconlist()
         self.iconHandler[1].stopiconlist()
-        self.matrixController.clear(true)
     end
 
     def render()

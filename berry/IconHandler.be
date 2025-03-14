@@ -216,7 +216,7 @@ class IconHandler
                 
                 keypos = string.find(header,"delay=")
                 if keypos < 0
-                    delay = 20 # 2 seconds default value for single images
+                    delay = 200 # 2 seconds default value for single images
                 else 
                     delay = int(header[keypos+6..keypos+9]) 
                 end
@@ -462,10 +462,6 @@ class IconHandler
         end
         matrixController.draw()
         iconbufferindex += 4
-
-        if drawid == nil
-            drawid = "DrawIcon"
-        end
 
         #log("Drawn, Index at " + str(iconbufferindex) + " delay at " + str(delay) + " size Iconbuffer " + str(size(self.Iconbuffer[iconbufferslot])) + " Currentbuffer " + str(self.Currentbuffer),2)
         if iconbufferindex < size(self.Iconbuffer[iconbufferslot]) # if images left in iconbuffer, trigger draw of next image

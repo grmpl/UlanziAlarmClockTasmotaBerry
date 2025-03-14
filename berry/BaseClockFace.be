@@ -9,19 +9,27 @@ class BaseClockFace
     var value
 
     def init(clockfaceManager)
-        log(classname(self) + "Init",3);
+        log(classname(self) + "Init",3)
 
-        self.clockfaceManager = clockfaceManager;
-        self.matrixController = clockfaceManager.matrixController;
+        self.clockfaceManager = clockfaceManager
+        self.matrixController = clockfaceManager.matrixController
+        # Clear of background will be called in every Clockface at every rendering, so we don't have to clear it here
+        # Clear of foreground will be done only in Iconhandler, so we have to clear it explicitely for all Clockfaces without IconHandler
+        self.matrixController.clear(true)
     end
 
     def deinit()
-        log(classname(self)+ "DeInit",3);
+        log(classname(self)+ "DeInit",3)
+    end
+
+    def close()
+        # dummy
     end
 
 
     def render()
-        self.matrixController.clear()
+        # will be called in every render-function
+        #self.matrixController.clear()
     end
     
     def drawsimpleicon(iconlist,offsetx,offsety,minbright)

@@ -10,16 +10,22 @@ class DateClockFace: BaseClockFace
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
+        # self.matrixController.clear()
         self.showYear = false
         self.iconHandler = IconHandler()
     end
 
     def deinit()
         #log("DateClockFace: Deinit start",2)
-        self.iconHandler.stopiconlist()
-        self.matrixController.clear(true)
+        # Calling foreign methods in the destructor is a bad idea, see https://github.com/arendst/Tasmota/discussions/23148 
+        # self.iconHandler.stopiconlist()
+        # self.matrixController.clear(true)
         #log("DateClockFace: Deinit end",2)
+    end
+
+    def close()
+        # Cleanup of class-specific objects
+        self.iconHandler.stopiconlist()
     end
 
     def handleActionButton(value)

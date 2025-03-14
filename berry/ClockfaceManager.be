@@ -154,6 +154,8 @@ class ClockfaceManager
                 self.currentClockFace.handleEditPrev(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
+            # Cleanup
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
         # else ignore Clean with setoption13=1, ignore Hold with setoption13=0
@@ -164,6 +166,7 @@ class ClockfaceManager
         self.energysaveoverride=tasmota.millis()
         # if energysaveClockface active, reactivate current clockface
         if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
         end
@@ -215,6 +218,7 @@ class ClockfaceManager
                 self.currentClockFace.handleEditNext(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only Single, with setoption13=0 use Clean on hold and all other values
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
             self.redraw()
@@ -293,13 +297,13 @@ class ClockfaceManager
             if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
                 log("ClockfaceManager: Activated energysaveClockFace",3)
                 self.energysaveClockfaceActive = true
-                #I'm not sure why, but deinit isn't called correctly when switching to EnergyClockFace, so we have to call it explicitely.
-                # Otherwise the timers from IconHandler will not be removed. Seems to be some timing issue.
-                self.currentClockFace.deinit()
+                # Cleanup
+                self.currentClockFace.close()
                 self.currentClockFace=EnergysaveClockFace(self) # init clockface
             elif ( voltage > uenergysavefaceh ) && self.energysaveClockfaceActive# use a hysteresis
                 log("ClockfaceManager: Deactivated energysaveClockFace",3)
                 self.energysaveClockfaceActive = false 
+                self.currentClockFace.close()
                 self.currentClockFace = clockFaces[self.currentClockFaceIdx](self) # switch back to normal clockface
             # if we are in between the range, keep it as it is
             end
@@ -325,6 +329,7 @@ class ClockfaceManager
         # will only be called if no energysaving state is active           
         # if energysaveClockface still active, reactivate current clockface
         if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
         end
         self.lowerbrightnessActive = false
@@ -443,6 +448,7 @@ class ClockfaceManager
         # This function may be called on other occasions than just before a restart
         # => We need to make sure that it is in fact a restart
         if tasmota.global.restart_flag == 1 || tasmota.global.restart_flag == 2
+            self.currentClockFace.close()
             self.currentClockFace = nil;
             self.matrixController.change_font('MatrixDisplay3x5');
             self.matrixController.clear();

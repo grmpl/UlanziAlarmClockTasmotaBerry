@@ -9,7 +9,8 @@ class ClockClockFace: BaseClockFace
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
+        # will be called in render
+        # self.matrixController.clear()
         self.weather = Weather()
     end
 

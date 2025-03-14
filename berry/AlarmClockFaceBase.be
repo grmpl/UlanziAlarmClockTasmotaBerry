@@ -24,7 +24,8 @@ class AlarmClockFaceBase: BaseClockFace
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
+        # will be called by render
+        # self.matrixController.clear()
         self.EditField=0
         self.EditMinute=99
         self.EditHour=99
