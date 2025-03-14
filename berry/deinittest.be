@@ -1,3 +1,4 @@
+# small example showing problem discussed in https://github.com/arendst/Tasmota/discussions/23148
 class permanent
     def init()
     end
