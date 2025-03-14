@@ -2,30 +2,30 @@ import string
 import persist
 
 import BaseClockFace
+import IconHandler
 
 class DateClockFace: BaseClockFace
-    var clockfaceManager
-    var matrixController
+    var iconHandler
     var showYear
-    var icons
-    var iconindex
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
+        # self.matrixController.clear()
         self.showYear = false
-        self.icons=[]
-        for iconfile:persist.member('iotdlist')[0..]
-            try 
-                self.icons.push(self.loadicon(iconfile))
-            except .. as err
-                log("DateClockFace: Error loading icons: " + str(err),1)
-            end
-        end
-        if self.icons.size() == 0
-            self.icons = [[]]
-        end
-        self.iconindex=0
+        self.iconHandler = IconHandler()
+    end
+
+    def deinit()
+        #log("DateClockFace: Deinit start",2)
+        # Calling foreign methods in the destructor is a bad idea, see https://github.com/arendst/Tasmota/discussions/23148 
+        # self.iconHandler.stopiconlist()
+        # self.matrixController.clear(true)
+        #log("DateClockFace: Deinit end",2)
+    end
+
+    def close()
+        # Cleanup of class-specific objects
+        self.iconHandler.stopiconlist()
     end
 
     def handleActionButton(value)
@@ -47,8 +47,13 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(31, 0, 0x0000ff,self.clockfaceManager.brightness)
         end
         if self.showYear != true
-            self.drawicon(self.icons[self.iconindex],0,0,40)
-            self.iconindex = (self.iconindex+1) % self.icons.size()
+            var iotdlist = persist.member("iotdlist")
+            if !self.iconHandler.IconlistRunning || self.iconHandler.Iconlist != iotdlist
+                self.iconHandler.stopiconlist()
+                self.matrixController.clear(true)
+                self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager,"DateCFDrawid") 
+            end
+
             self.matrixController.change_font('MatrixDisplay3x5')
             x_offset = 12
             y_offset = 2
@@ -59,6 +64,8 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(x_offset+8, y_offset+4, self.clockfaceManager.color, self.clockfaceManager.brightness)
             self.matrixController.set_matrix_pixel_color(x_offset+18, y_offset+4, self.clockfaceManager.color, self.clockfaceManager.brightness)
         else
+            self.iconHandler.stopiconlist()
+            self.matrixController.clear(true)
             self.matrixController.change_font('MatrixDisplay3x5')
             x_offset = 5
             y_offset = 2
@@ -71,7 +78,7 @@ class DateClockFace: BaseClockFace
             self.matrixController.set_matrix_pixel_color(x_offset+8, y_offset+4, self.clockfaceManager.color, self.clockfaceManager.brightness)
             self.matrixController.set_matrix_pixel_color(x_offset+18, y_offset+4, self.clockfaceManager.color, self.clockfaceManager.brightness)
         
-            # Icon
+            #Date Icon - should be changed to drawsimpleicon
             self.matrixController.set_matrix_pixel_color(0, 2, 0xff0000,self.clockfaceManager.brightness)
             self.matrixController.set_matrix_pixel_color(1, 2, 0xff0000,self.clockfaceManager.brightness)
             self.matrixController.set_matrix_pixel_color(2, 2, 0xff0000,self.clockfaceManager.brightness)

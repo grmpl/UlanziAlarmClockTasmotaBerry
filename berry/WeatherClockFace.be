@@ -1,21 +1,36 @@
 import BaseClockFace
-import Weather
+import IconHandler
 import string
 import persist
 
 class WeatherClockFace: BaseClockFace
 
-
+    var iconHandler
     var weather
     var weathericon 
-    var weatherfile
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
-        self.weather = Weather()
-        self.weathericon=[[nil],[nil]]
-        self.weatherfile=["",""]
+        # self.matrixController.clear()
+        self.weather = self.clockfaceManager.weather
+        self.weathericon=[[],[]]
+        var iconhandler1=IconHandler()
+        tasmota.delay(1)
+        var iconhandler2=IconHandler()
+        self.iconHandler=[iconhandler1,iconhandler2]
+    end
+
+    def deinit()
+        # Calling foreign methods in the destructor is a bad idea, see https://github.com/arendst/Tasmota/discussions/23148 
+        # self.iconHandler[0].stopiconlist()
+        # self.iconHandler[1].stopiconlist()
+        # self.matrixController.clear(true)
+    end
+
+    def close()
+        # Cleanup of class-specific objects
+        self.iconHandler[0].stopiconlist()
+        self.iconHandler[1].stopiconlist()
     end
 
     def render()
@@ -73,69 +88,66 @@ class WeatherClockFace: BaseClockFace
             self.matrixController.print_string(temp_str[iconnumber],8 + xoffset,3, false, temp_color[iconnumber], self.clockfaceManager.brightness)
         
             if temp_neg[iconnumber] 
-                self.matrixController.set_matrix_pixel_color((10 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
-                self.matrixController.set_matrix_pixel_color((11 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
                 self.matrixController.set_matrix_pixel_color((12 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color((13 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color((14 + xoffset), 1, temp_color[iconnumber], self.clockfaceManager.brightness)
             end
 
 
         # Display weather icon
             var wmo=wmocode[iconnumber]
-            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 )
-                self.drawweather("beach.pam", iconnumber, xoffset)
-            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 )
-                self.drawweather("beer.pam", iconnumber, xoffset)
-            elif wmo == 1 
-                self.drawweather("cloudy1.pam",iconnumber,xoffset)
-                
-            elif wmo == 2
-                self.drawweather("cloudy2.pam",iconnumber,xoffset)
-                
-            elif wmo == 3 || wmo == 45 || wmo == 48
-                # cloudy (1-3) /fog (45,48)
-                self.drawweather("cloudy3.pam",iconnumber,xoffset)
-
-            elif wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
-                wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
-                wmo == 80 || wmo == 81 || wmo == 82 
-                # rain, 56,57,66,67 with ice
-                self.drawweather("rainy.pam",iconnumber,xoffset)
+            if ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 0 ) 
+                self.showweathericon(iconnumber,"beach.pam",xoffset)
+            elif ( temp[iconnumber] > 23 ) && ( !temp_neg[iconnumber] ) && ( iconnumber == 1 ) 
+                self.showweathericon(iconnumber,"beer.pam",xoffset)
             
-            elif wmo == 95 || wmo == 96 || wmo == 99
+            elif wmo == 1 
+                self.showweathericon(iconnumber,"cloudy1_16x8.miff",xoffset)
+                
+            elif wmo == 2 
+                self.showweathericon(iconnumber,"cloudy2_16x8.miff",xoffset)
+                
+            elif ( wmo == 3 || wmo == 45 || wmo == 48 ) 
+                # cloudy (1-3) /fog (45,48)
+                self.showweathericon(iconnumber,"cloudy3_16x8.miff",xoffset)
+
+            elif ( wmo == 51 || wmo == 53 || wmo == 55 || wmo == 56 || wmo == 57 ||
+                wmo == 61 || wmo == 63 || wmo == 65 || wmo == 66 || wmo == 67 ||
+                wmo == 80 || wmo == 81 || wmo == 82 ) 
+                # rain, 56,57,66,67 with ice
+                self.showweathericon(iconnumber,"rainy.miff",xoffset)
+            
+            elif ( wmo == 95 || wmo == 96 || wmo == 99 ) 
                 # 95,96,99 thunderstorm
-                self.drawweather("lightning.pam",iconnumber,xoffset)
+                self.showweathericon(iconnumber,"lightning.pam",xoffset)
 
-            elif wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86
+            elif ( wmo == 71 || wmo == 73 || wmo == 75 || wmo == 77 || wmo == 85 || wmo == 86 ) 
                 # snow
-                self.drawweather("snowfall.pam",iconnumber,xoffset)
+                self.showweathericon(iconnumber,"snowfall.pam",xoffset)
 
-            elif wmo == 0 
+            elif wmo == 0
                 # sunny
-                self.drawweather("sunny.pam",iconnumber,xoffset)
+                self.showweathericon(iconnumber,"sunny.pam",xoffset)
 
             else
                 # unknown
-                self.drawweather("unknown.pam",iconnumber,xoffset)
+                self.showweathericon(iconnumber,"unknown.pam",xoffset)
             end
         end
     
         
     end
 
-
-    def drawweather(filename,iconnum,xoff)
-        if ( self.weatherfile[iconnum] == filename ) && ( self.weathericon[iconnum] != nil )
-            self.drawicon(self.weathericon[iconnum],xoff,0,40)
-        else
-            self.weatherfile[iconnum] = filename
-            self.weathericon[iconnum] = self.loadicon(filename)
-            if self.weathericon[iconnum] != nil
-                self.drawicon(self.weathericon[iconnum],xoff,0,40)
-            else 
-                log("WeatherClockFace: Couldn't load icon " + filename,1)
-            end
+    def showweathericon(iconnumber,filename,xoffset)
+        if !self.iconHandler[iconnumber].IconlistRunning || self.iconHandler[iconnumber].Iconlist != [filename]
+            self.iconHandler[iconnumber].stopiconlist()
+            self.matrixController.clear(true,xoffset,0,16,8) # clear this half of the screen
+            self.iconHandler[iconnumber].starticonlist([filename], xoffset,0,40,self.clockfaceManager)
+            #log("Weatherclockface call starticon with: " + str(timerid),2)
         end
     end
+
+
 end
 
 return WeatherClockFace

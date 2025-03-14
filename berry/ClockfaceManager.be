@@ -10,10 +10,10 @@ import mqtt
 
 import MatrixController
 import AlarmHandler
+import Weather
 
 import ClockClockFace
 import DateClockFace
-#import IconClockFace
 import WeatherClockFace
 import Alarm1ClockFace
 import Alarm2ClockFace
@@ -26,18 +26,18 @@ import EnergysaveClockFace
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
-#    IconClockFace,
     WeatherClockFace, 
     Alarm1ClockFace,
     Alarm2ClockFace,
     Alarm3ClockFace,
     Alarm4ClockFace
-];
+]
 
 class ClockfaceManager
     # ClockfaceHandling
     var matrixController
     var alarmHandler
+    var weather
     var brightness
     var color
     var currentClockFace
@@ -60,6 +60,7 @@ class ClockfaceManager
         log("ClockfaceManager Init",3);
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
+        self.weather = Weather()
         self.lastredraw=0
         self.buttonholddone=false
         self.energysaveoverride=tasmota.millis()
@@ -67,7 +68,7 @@ class ClockfaceManager
         self.lowerbrightnessActive = false
 
         self.brightness = 50;
-        self.color = fonts.palette['red']
+        self.color = 0xff0000
 
         self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
         self.matrixController.draw()
@@ -146,7 +147,7 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze, do nothing
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
-            log("Snooze activated by button_prev",2)
+            #log("Snooze activated by button_prev",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
@@ -156,6 +157,8 @@ class ClockfaceManager
                 self.currentClockFace.handleEditPrev(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
+            # Cleanup
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
         # else ignore Clean with setoption13=1, ignore Hold with setoption13=0
@@ -166,6 +169,7 @@ class ClockfaceManager
         self.energysaveoverride=tasmota.millis()
         # if energysaveClockface active, reactivate current clockface
         if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
         end
@@ -182,7 +186,7 @@ class ClockfaceManager
         elif ( alarmset > 0 ) && ( so13 == 1 ) && ( value  == 10 ) # with setoption13=1 every single-action will trigger hold function in future
             tasmota.set_timer(holdtime,/->self.stopalarm(),self.buttonholdtimerID)
         elif ( alarmset > 0 ) && ( persist.member('snooze') == 0 ) #if alarm active and no snooze yet, every other action will activate snooze, this includes clear with setoption13=1 if hold-action was not performed yet
-            log("ClockfaceManager: Snooze activated by button_action",2)
+            #log("ClockfaceManager: Snooze activated by button_action",2)
             if so13 == 1 #Remove holdtimer if it is still set (i.e. if hold time was not reached); there is no possibility to check for timer
                 tasmota.remove_timer(self.buttonholdtimerID)
             end
@@ -207,7 +211,7 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
-            log("ClockfaceManager: Snooze activated by button_next",2)
+            #log("ClockfaceManager: Snooze activated by button_next",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
@@ -217,6 +221,7 @@ class ClockfaceManager
                 self.currentClockFace.handleEditNext(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only Single, with setoption13=0 use Clean on hold and all other values
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
 
             self.redraw()
@@ -232,13 +237,13 @@ class ClockfaceManager
         # Alarm set and no Snooze, 
         #  Alarmhandler must take care of buzzing tunes, we will just remind him every second to be active
         if alarmset > 0 && persist.member('snooze') == 0 
-            log("ClockfaceManager: Alarm active, beeping",3)
+            #log("ClockfaceManager: Alarm active, beeping",3)
             self.alarmHandler.alarm()
         # Alarm set and Snooze on
         elif alarmset > 0 && persist.member('snooze') > 0
             # Snooze decrement
             if self.snoozerunning > 1
-                log("ClockfaceManager: Snooze active, decrementing",3)
+                #log("ClockfaceManager: Snooze active, decrementing",3)
                 self.snoozerunning = self.snoozerunning - 1
             # Snooze at 1 or 0
             else
@@ -251,7 +256,7 @@ class ClockfaceManager
             end
         # Alarm off, but still Snooze active
         elif alarmset == 0 && persist.member('snooze') > 0
-            log("ClockfaceManager: Alarm off, but Snooze still on",3)
+            #log("ClockfaceManager: Alarm off, but Snooze still on",3)
             persist.snooze = 0
             self.snoozerunning = 0
             persist.save()
@@ -295,10 +300,13 @@ class ClockfaceManager
             if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
                 log("ClockfaceManager: Activated energysaveClockFace",3)
                 self.energysaveClockfaceActive = true
+                # Cleanup
+                self.currentClockFace.close()
                 self.currentClockFace=EnergysaveClockFace(self) # init clockface
             elif ( voltage > uenergysavefaceh ) && self.energysaveClockfaceActive# use a hysteresis
                 log("ClockfaceManager: Deactivated energysaveClockFace",3)
                 self.energysaveClockfaceActive = false 
+                self.currentClockFace.close()
                 self.currentClockFace = clockFaces[self.currentClockFaceIdx](self) # switch back to normal clockface
             # if we are in between the range, keep it as it is
             end
@@ -324,6 +332,7 @@ class ClockfaceManager
         # will only be called if no energysaving state is active           
         # if energysaveClockface still active, reactivate current clockface
         if classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
         end
         self.lowerbrightnessActive = false
@@ -345,16 +354,19 @@ class ClockfaceManager
 
     def iotdmqtt(topic,idx,payload_s,payload_b)
         log("ClockfaceManager: iotdmqtt called with topic: " + str(topic) + " payload: " + str(payload_s),2)
+        var outtopic="tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotdout"
         var payload_json = json.load(payload_s)
         if payload_json == nil
             log("ClockfaceManager: No valid Json in MQTT-message from " + str(topic),1)
+            # processed, do not process further
             return true
         end
         var action
         try 
             action = payload_json['action']
         except .. as err
-            log("ClockfaceManager: Could not find action-key, error:" + str(err),1)
+            log("ClockfaceManager: Could not find action-key in MQTT-message, error:" + str(err),1)
+            mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
             return true
         end
         
@@ -364,10 +376,12 @@ class ClockfaceManager
                 filename = payload_json['filename']
             except .. as err
                 log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
                 return true
             end
-            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
-                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
 
@@ -375,12 +389,14 @@ class ClockfaceManager
             try 
                 content = bytes().fromb64(payload_json['content'])
             except .. as err
-                log("ClockfaceManager: Could not translate content from base63, error:" + str(err),1)
+                log("ClockfaceManager: Could not translate content from base64, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"base64 decode failed\"}")
                 return true
             end
 
-            if size(content) < 10 || string.find(content.asstring(),'P',0,1) < 0
-                log("ClockfaceManager: No valid netpnm-file in content from MQTT-message for iotd",1)
+            if size(content) < 10 || ( string.find(content.asstring(),'P',0,1) < 0 && string.find(content.asstring(),'id=ImageMagick',0,20) < 0 )
+                log("ClockfaceManager: No valid file in content from MQTT-message for iotd",1)
+                mqtt.publish(outtopic,"{\"result\": \"filetype not accepted\"}")
                 return true
             end
             var file
@@ -389,6 +405,7 @@ class ClockfaceManager
                 file=open(filename,'wb')
             except .. as err
                 log("ClockfaceManager: Can't open file for writing: " + str(filename) + ", error: " + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"file open error\"}")
                 return true
             end
 
@@ -400,12 +417,21 @@ class ClockfaceManager
             persist.iotdlist=iotdlist
             persist.save()
 
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
             return true
 
         elif payload_json['action'] == "removefile"
-            var filename = payload_json['filename']
-            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
-                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
 
@@ -421,19 +447,82 @@ class ClockfaceManager
             persist.iotdlist=iotdlist
             persist.save()
             path.remove(filename)
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
             return true
 
+        elif payload_json['action'] == "addentry"
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
+                return true
+            end
+            
+            var iotdlist = persist.member('iotdlist')
+            iotdlist.push(filename)
+            persist.iotdlist=iotdlist
+            persist.save()
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
+        
+        elif payload_json['action'] == "removeentry"
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
+                return true
+            end
+            
+            var iotdlist = persist.member('iotdlist')
+            var i = size(iotdlist) - 1
+            while i >= 0
+                if iotdlist[i] == filename
+                    iotdlist.pop(i) # must be done from back, otherwise list will be changed with all pops
+                end
+                i -= 1
+            end
+            
+            persist.iotdlist=iotdlist
+            persist.save()
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
+
+
+        elif payload_json['action'] == "showiotdlist"
+            var iotdlist=persist.member('iotdlist')
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
+        
+        
         elif payload_json['action'] == "resetiotdlist"
             persist.iotdlist = ['iotd.pam']
+            mqtt.publish(outtopic,"{\"result\": \""+str(persist.member('iotdlist'))+"\"}")
             persist.save()
             return true
 
         
         else 
             log("ClockfaceManager: No valid action given, action: " + str(action),1)
+            mqtt.publish(outtopic,"{\"result\": \"no valid action\"}")
+            return true
 
 
         end
+        return true
 
     end    
 
@@ -442,6 +531,7 @@ class ClockfaceManager
         # This function may be called on other occasions than just before a restart
         # => We need to make sure that it is in fact a restart
         if tasmota.global.restart_flag == 1 || tasmota.global.restart_flag == 2
+            self.currentClockFace.close()
             self.currentClockFace = nil;
             self.matrixController.change_font('MatrixDisplay3x5');
             self.matrixController.clear();

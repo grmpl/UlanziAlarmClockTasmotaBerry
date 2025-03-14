@@ -1,5 +1,4 @@
 import BaseClockFace
-import Weather
 import string
 import persist
 
@@ -9,8 +8,9 @@ class ClockClockFace: BaseClockFace
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
-        self.matrixController.clear()
-        self.weather = Weather()
+        # will be called in render
+        # self.matrixController.clear()
+        self.weather = self.clockfaceManager.weather
     end
 
     def render()
@@ -56,7 +56,7 @@ class ClockClockFace: BaseClockFace
         self.matrixController.print_string(hour_str, hx_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         self.matrixController.print_string(minute_str, mx_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         self.matrixController.set_matrix_pixel_color(mx_offset-2, 2, self.clockfaceManager.color, self.clockfaceManager.brightness)
-        self.matrixController.set_matrix_pixel_color(mx_offset-2, 4, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.set_matrix_pixel_color(mx_offset-2, 6, self.clockfaceManager.color, self.clockfaceManager.brightness)
 
 
         # Display temperature
