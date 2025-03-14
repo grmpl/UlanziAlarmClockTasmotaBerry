@@ -56,7 +56,7 @@ class ClockClockFace: BaseClockFace
         self.matrixController.print_string(hour_str, hx_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         self.matrixController.print_string(minute_str, mx_offset, y_offset, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         self.matrixController.set_matrix_pixel_color(mx_offset-2, 2, self.clockfaceManager.color, self.clockfaceManager.brightness)
-        self.matrixController.set_matrix_pixel_color(mx_offset-2, 4, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.set_matrix_pixel_color(mx_offset-2, 6, self.clockfaceManager.color, self.clockfaceManager.brightness)
 
 
         # Display temperature

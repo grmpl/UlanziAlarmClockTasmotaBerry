@@ -147,7 +147,7 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze, do nothing
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
-            log("Snooze activated by button_prev",2)
+            #log("Snooze activated by button_prev",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
@@ -186,7 +186,7 @@ class ClockfaceManager
         elif ( alarmset > 0 ) && ( so13 == 1 ) && ( value  == 10 ) # with setoption13=1 every single-action will trigger hold function in future
             tasmota.set_timer(holdtime,/->self.stopalarm(),self.buttonholdtimerID)
         elif ( alarmset > 0 ) && ( persist.member('snooze') == 0 ) #if alarm active and no snooze yet, every other action will activate snooze, this includes clear with setoption13=1 if hold-action was not performed yet
-            log("ClockfaceManager: Snooze activated by button_action",2)
+            #log("ClockfaceManager: Snooze activated by button_action",2)
             if so13 == 1 #Remove holdtimer if it is still set (i.e. if hold time was not reached); there is no possibility to check for timer
                 tasmota.remove_timer(self.buttonholdtimerID)
             end
@@ -211,7 +211,7 @@ class ClockfaceManager
         # If Alarm is active and no Snooze, activate Snooze
         var so13 = tasmota.get_option(13)
         if persist.member('alarmactive') > 0 && persist.member('snooze') == 0
-            log("ClockfaceManager: Snooze activated by button_next",2)
+            #log("ClockfaceManager: Snooze activated by button_next",2)
             self.alarmHandler.buzzer_alarmoff(1,50,100,2)
             persist.snooze=1
             persist.save()
@@ -237,13 +237,13 @@ class ClockfaceManager
         # Alarm set and no Snooze, 
         #  Alarmhandler must take care of buzzing tunes, we will just remind him every second to be active
         if alarmset > 0 && persist.member('snooze') == 0 
-            log("ClockfaceManager: Alarm active, beeping",3)
+            #log("ClockfaceManager: Alarm active, beeping",3)
             self.alarmHandler.alarm()
         # Alarm set and Snooze on
         elif alarmset > 0 && persist.member('snooze') > 0
             # Snooze decrement
             if self.snoozerunning > 1
-                log("ClockfaceManager: Snooze active, decrementing",3)
+                #log("ClockfaceManager: Snooze active, decrementing",3)
                 self.snoozerunning = self.snoozerunning - 1
             # Snooze at 1 or 0
             else
@@ -256,7 +256,7 @@ class ClockfaceManager
             end
         # Alarm off, but still Snooze active
         elif alarmset == 0 && persist.member('snooze') > 0
-            log("ClockfaceManager: Alarm off, but Snooze still on",3)
+            #log("ClockfaceManager: Alarm off, but Snooze still on",3)
             persist.snooze = 0
             self.snoozerunning = 0
             persist.save()
@@ -375,8 +375,8 @@ class ClockfaceManager
                 log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
                 return true
             end
-            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
-                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
                 return true
             end
 
@@ -388,8 +388,8 @@ class ClockfaceManager
                 return true
             end
 
-            if size(content) < 10 || string.find(content.asstring(),'P',0,1) < 0
-                log("ClockfaceManager: No valid netpnm-file in content from MQTT-message for iotd",1)
+            if size(content) < 10 || ( string.find(content.asstring(),'P',0,1) < 0 && string.find(content.asstring(),'id=ImageMagick',0,20) < 0 )
+                log("ClockfaceManager: No valid file in content from MQTT-message for iotd",1)
                 return true
             end
             var file
@@ -413,8 +413,8 @@ class ClockfaceManager
 
         elif payload_json['action'] == "removefile"
             var filename = payload_json['filename']
-            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil || ( string.find(filename,".p",size(filename)-4,size(filename)-2) < 0 )
-                log("ClockfaceManager: No valid netpnm-filename in MQTT-message for iotd, filename: " + str(filename),1)
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
                 return true
             end
 
@@ -431,6 +431,50 @@ class ClockfaceManager
             persist.save()
             path.remove(filename)
             return true
+
+        elif payload_json['action'] == "addentry"
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                return true
+            end
+            
+            var iotdlist = persist.member('iotdlist')
+            iotdlist.push(filename)
+            persist.iotdlist=iotdlist
+            persist.save()
+        
+        elif payload_json['action'] == "removeentry"
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                return true
+            end
+            if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
+                log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                return true
+            end
+            
+            var iotdlist = persist.member('iotdlist')
+            var i = size(iotdlist) - 1
+            while i >= 0
+                if iotdlist[i] == filename
+                    iotdlist.pop(i) # must be done from back, otherwise list will be changed with all pops
+                end
+                i -= 1
+            end
+            
+            persist.iotdlist=iotdlist
+            persist.save()
+
 
         elif payload_json['action'] == "resetiotdlist"
             persist.iotdlist = ['iotd.pam']

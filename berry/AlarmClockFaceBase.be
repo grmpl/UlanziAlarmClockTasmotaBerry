@@ -97,7 +97,7 @@ class AlarmClockFaceBase: BaseClockFace
     def switchenable()
         self.alarmstatus=self.alarmstatus ^ 1 # should be updated every second, so we don't read it again
         tasmota.cmd("_"+self.timerstr+" {\"Enable\":" + str((self.alarmstatus & 1)) + "}",true)
-        log("AlarmClockFace: Switched timer active/inactive by button",2)
+        #log("AlarmClockFace: Switched timer active/inactive by button",2)
         self.clockfaceManager.redraw()
     end
 
