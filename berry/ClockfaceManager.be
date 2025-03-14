@@ -354,16 +354,19 @@ class ClockfaceManager
 
     def iotdmqtt(topic,idx,payload_s,payload_b)
         log("ClockfaceManager: iotdmqtt called with topic: " + str(topic) + " payload: " + str(payload_s),2)
+        var outtopic="tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotdout"
         var payload_json = json.load(payload_s)
         if payload_json == nil
             log("ClockfaceManager: No valid Json in MQTT-message from " + str(topic),1)
+            # processed, do not process further
             return true
         end
         var action
         try 
             action = payload_json['action']
         except .. as err
-            log("ClockfaceManager: Could not find action-key, error:" + str(err),1)
+            log("ClockfaceManager: Could not find action-key in MQTT-message, error:" + str(err),1)
+            mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
             return true
         end
         
@@ -373,10 +376,12 @@ class ClockfaceManager
                 filename = payload_json['filename']
             except .. as err
                 log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
                 return true
             end
             if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
                 log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
 
@@ -384,12 +389,14 @@ class ClockfaceManager
             try 
                 content = bytes().fromb64(payload_json['content'])
             except .. as err
-                log("ClockfaceManager: Could not translate content from base63, error:" + str(err),1)
+                log("ClockfaceManager: Could not translate content from base64, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"base64 decode failed\"}")
                 return true
             end
 
             if size(content) < 10 || ( string.find(content.asstring(),'P',0,1) < 0 && string.find(content.asstring(),'id=ImageMagick',0,20) < 0 )
                 log("ClockfaceManager: No valid file in content from MQTT-message for iotd",1)
+                mqtt.publish(outtopic,"{\"result\": \"filetype not accepted\"}")
                 return true
             end
             var file
@@ -398,6 +405,7 @@ class ClockfaceManager
                 file=open(filename,'wb')
             except .. as err
                 log("ClockfaceManager: Can't open file for writing: " + str(filename) + ", error: " + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"file open error\"}")
                 return true
             end
 
@@ -409,12 +417,21 @@ class ClockfaceManager
             persist.iotdlist=iotdlist
             persist.save()
 
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
             return true
 
         elif payload_json['action'] == "removefile"
-            var filename = payload_json['filename']
+            var filename
+            try 
+                filename = payload_json['filename']
+            except .. as err
+                log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
+                return true
+            end
             if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
                 log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
 
@@ -430,6 +447,7 @@ class ClockfaceManager
             persist.iotdlist=iotdlist
             persist.save()
             path.remove(filename)
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
             return true
 
         elif payload_json['action'] == "addentry"
@@ -438,10 +456,12 @@ class ClockfaceManager
                 filename = payload_json['filename']
             except .. as err
                 log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
                 return true
             end
             if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
                 log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
             
@@ -449,6 +469,8 @@ class ClockfaceManager
             iotdlist.push(filename)
             persist.iotdlist=iotdlist
             persist.save()
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
         
         elif payload_json['action'] == "removeentry"
             var filename
@@ -456,10 +478,12 @@ class ClockfaceManager
                 filename = payload_json['filename']
             except .. as err
                 log("ClockfaceManager: Could not find filename-key, error:" + str(err),1)
+                mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
                 return true
             end
             if type(filename) != 'string' || size(filename) == 0 || size(filename) == nil 
                 log("ClockfaceManager: No valid filename in MQTT-message for iotd, filename: " + str(filename),1)
+                mqtt.publish(outtopic,"{\"result\": \"filename not accepted\"}")
                 return true
             end
             
@@ -474,19 +498,31 @@ class ClockfaceManager
             
             persist.iotdlist=iotdlist
             persist.save()
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
 
 
+        elif payload_json['action'] == "showiotdlist"
+            var iotdlist=persist.member('iotdlist')
+            mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
+            return true
+        
+        
         elif payload_json['action'] == "resetiotdlist"
             persist.iotdlist = ['iotd.pam']
+            mqtt.publish(outtopic,"{\"result\": \""+str(persist.member('iotdlist'))+"\"}")
             persist.save()
             return true
 
         
         else 
             log("ClockfaceManager: No valid action given, action: " + str(action),1)
+            mqtt.publish(outtopic,"{\"result\": \"no valid action\"}")
+            return true
 
 
         end
+        return true
 
     end    
 

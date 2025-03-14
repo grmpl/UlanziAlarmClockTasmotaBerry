@@ -36,14 +36,20 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Activating and deactivating of timers is possible at the clock.
 - You have multiple displays, which you can choose from by pressing left and right button.
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
-- Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. The managing of the list is possible with MQTT, but only rudimentary implemented. Please look in the source code for further information. Icons are not part of the source on Github due to possible licensing issues.
-- Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here again icons would be displayed if files are uploaded to the device. Please have a look at the source code. I've put some examples into specialicons-folder. 
+- Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. Icons for this face are not part of github, due to possible license issues. The managing of the list is possible with MQTT. Topic for changes is tasmberry/<device topic>/iotd, result will be given in tasmberry/<device topic>/iotdout. Commands can be sent with JSON-payload:
+  - `{"action": "addentry", "filename": "beer.pam"}` would add icon beer.pam to the icon list, file beer.pam must exist already
+  - `{"action": "removeentry", "filename": "beer.pam"}` would remove icon beer.pam from the icon list
+  - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really.
+  - `{"action": "removefile", "filename": "test.pam"}` would remove file from filesystem and out of icon list.
+  - `{"action": "showiotdlist"}` would show current icon list
+- Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use. I've put a few self created icons in the specialicons-folder for reference. 
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
 Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, it can be changed with left and right button. With `setoption13 1` quick button presses and long press is possible for faster value change. (Note: Don't hold for too long, otherwise setoption13 will be deactivated - seems to be a Tasmota feature). Short press of middle butten switches to next value, long press saves new timer setting. 
 - If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be increased in time. During alarm *any* button press on any face will activate Snooze.
 - Long press on middle button on all faces will stop alarm until next timer fires.
 - An additional button on the main web page will give you the possibility to stop an alarm remotely.
 - If running on battery the clock will switch after some minutes to lowest brightness level and after 1-2 hours it will switch to a "ledsaver"-screen. Switching is controlled by battery voltage and not by timing.
+
 
 
 ## Additional information
@@ -65,9 +71,13 @@ Editing of alarm is possible by long press of middle button. The value to be cha
         #define USE_BERRY_ULP      // (ESP32, ESP32S2 and ESP32S3 only) Add support for the ULP via Berry (+5k flash)
         #endif
 ```
-- Icon-files have to be converted with netpbm-tools or convert from imagemagick. Necessary commandlines can be found in comment of IconHandler.be.
+- Icon-files have to be converted with netpbm-tools or convert from imagemagick:
+  - (recommended) with imagemagick, for all icons, even animated ones and including transparency: `convert <inputfile> -type TrueColorAlpha +profile \* <outputfile.miff>`
+  - with netpbm for png-files with transparency, without animation: `pngtopam -alphapam <inputfile.png> > <outputfile.pam>`
+  - with nepbmp for gif-files, without transparency, only first image of animation: `giftopnm -image=1 <inputfile> > <outputfile.pnm>`
 - The code does have a lot of long running Berry code. Don't expect too much from a performance point of view. I tried to avoid too long blocking by deferred executions, but there are still blocks which would run several 100 msec. I'm happy with current response time, so I didn't do any more optimization.
-- The code is consuming a lot of memory, too. Most letters in fonts.be are disabled therefore to save memory. With this setting clock is running stable. If you want to display more text and still use IconHandler you have to try out how far you can go. With all fonts enabled, I didn't get a stable system, even without displaying any additional text. Omitting TinyUnicode font could be just enough to have a stable system, because it's very large, but I haven't tried.
+- The code is consuming a lot of memory, too. As the Ulanzi does not have any PSRAM, most letters in fonts.be are disabled to save memory. With this setting and after reworking some code which caused a memory leak, the clock is now running stable. 
+If you want to display more text, you have to try out how far you can go.
  
 
 
