@@ -10,6 +10,7 @@ import mqtt
 
 import MatrixController
 import AlarmHandler
+import Weather
 
 import ClockClockFace
 import DateClockFace
@@ -30,12 +31,13 @@ var clockFaces = [
     Alarm2ClockFace,
     Alarm3ClockFace,
     Alarm4ClockFace
-];
+]
 
 class ClockfaceManager
     # ClockfaceHandling
     var matrixController
     var alarmHandler
+    var weather
     var brightness
     var color
     var currentClockFace
@@ -58,6 +60,7 @@ class ClockfaceManager
         log("ClockfaceManager Init",3);
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
+        self.weather = Weather()
         self.lastredraw=0
         self.buttonholddone=false
         self.energysaveoverride=tasmota.millis()

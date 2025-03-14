@@ -1,5 +1,4 @@
 import BaseClockFace
-import Weather
 import string
 import persist
 
@@ -11,7 +10,7 @@ class ClockClockFace: BaseClockFace
         super(self).init(clockfaceManager)
         # will be called in render
         # self.matrixController.clear()
-        self.weather = Weather()
+        self.weather = self.clockfaceManager.weather
     end
 
     def render()

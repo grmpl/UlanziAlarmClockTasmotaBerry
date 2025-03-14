@@ -1,5 +1,4 @@
 import BaseClockFace
-import Weather
 import IconHandler
 import string
 import persist
@@ -13,7 +12,7 @@ class WeatherClockFace: BaseClockFace
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
         # self.matrixController.clear()
-        self.weather = Weather()
+        self.weather = self.clockfaceManager.weather
         self.weathericon=[[],[]]
         var iconhandler1=IconHandler()
         tasmota.delay(1)
