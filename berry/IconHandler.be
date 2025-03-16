@@ -75,16 +75,22 @@ class IconHandler
     end
 
     def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager,drawid) # starts displaying a list of icon-files
-        self.Iconlist=iconlist
-        self.Iconlistindex=0
+        var filename
+        if iconlist != []
+            self.Iconlist=iconlist
+            self.Iconlistindex=0
+            filename = self.Iconlist[self.Iconlistindex]
+        else
+            filename = nil
+        end
         self.Currentbuffer=0
         self.Clockfacemanager=clockfaceManager
         # stop any running list
         self.stopiconlist()
         # Load first part of images into buffer
-        var drawbuffer = self.loadiconpart(self.Iconlist[self.Iconlistindex],0,self.Loadcount,self.Currentbuffer)
+        self.loadiconpart(filename,0,self.Loadcount,self.Currentbuffer)
         # and start showing the buffer
-        self.drawmultipleicons(drawbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager)
+        self.drawmultipleicons(self.Currentbuffer,0,xoffset,yoffset,minbright,self.Clockfacemanager)
         self.IconlistRunning=true
         return 0
     end
@@ -99,6 +105,11 @@ class IconHandler
         var buffersize=1000
         var counter=0
 
+        if filename == nil
+            self.Iconbuffer[bufferslot] = bytes()
+            return nil
+        end
+
         if fileindex == 0
             self.Iconbuffer[bufferslot]=bytes()
         end
@@ -108,6 +119,7 @@ class IconHandler
             iconfile=open(filename,'rb')
         except .. as err
             log("IconHandler: Can't open iconfile " + filename + ", error: " + str(err),1)
+            self.Iconbuffer[bufferslot] = bytes()
             return nil
         end
         iconfile.seek(fileindex)
@@ -153,6 +165,7 @@ class IconHandler
                     if readbuffer.size() == 0 
                         log("IconHandler: Header End not found in MIFF-file",1 )
                         iconfile.close()
+                        self.Iconbuffer[bufferslot] = bytes()
                         return nil
                     end
                     headerprevsize=size(header)
@@ -168,6 +181,7 @@ class IconHandler
                 if !( keypos > 0 && string.startswith(header[keypos..keypos+25],"class=DirectClass",true) )
                     log("IconHandler: Can't load MIFF-File, it is not DirectClass.",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
                 
@@ -175,6 +189,7 @@ class IconHandler
                 if !( keypos > 0 && string.startswith(header[keypos..keypos+25],"type=TrueColorAlpha",true) )
                     log("IconHandler: Can't load MIFF-File, it is not type TrueColorAlpha.",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
 
                 end
@@ -183,6 +198,7 @@ class IconHandler
                 if !( keypos > 0 && string.startswith(header[keypos..keypos+25],"depth",true) )
                     log("IconHandler: Can't load MIFF-File, depth is not 8",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
 
@@ -190,12 +206,14 @@ class IconHandler
                 if keypos < 0
                     log("IconHandler: Can't find columns in MIFF-file",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 else 
                     width = int(header[keypos+8..keypos+9]) 
                     if (width < 1 || width > 32)
                         log("IconHandler: Columns out of range in MIFF-file",1)
                         iconfile.close()
+                        self.Iconbuffer[bufferslot] = bytes()
                         return nil
                     end
                 end
@@ -204,12 +222,14 @@ class IconHandler
                 if keypos < 0
                     log("IconHandler: Can't find rows in MIFF-file",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 else 
                     height = int(header[keypos+5..keypos+5]) 
                     if (height < 1 || height > 8)
                         log("IconHandler: Rows out of range in MIFF-file",1)
                         iconfile.close()
+                        self.Iconbuffer[bufferslot] = bytes()
                         return nil
                     end
                 end
@@ -287,11 +307,13 @@ class IconHandler
                 if (width < 1) || (width >32)
                     log("IconHandler: Width in iconfile not between 1 and 32",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
             else
                 log("IconHandler: Expecting WIDTH in second line of iconfile",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
 
@@ -301,11 +323,13 @@ class IconHandler
                 if (height < 1) || (height >8)
                     log("IconHandler: Height in iconfile not between 1 and 8",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
             else
                 log("IconHandler: Expecting HEIGHT in third line of iconfile",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
 
@@ -316,11 +340,13 @@ class IconHandler
                 if depth != 4
                     log("IconHandler: Depth in pam-iconfile must be 4",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
             else
                 log("IconHandler: Expecting DEPTH in fourth line of iconfile",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
 
@@ -330,11 +356,13 @@ class IconHandler
                 if (maxval < 1) || (maxval > 255)
                     log("IconHandler: Maxval not between 1 and 255",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
             else
                 log("IconHandler: Expecting MAXVAL in fiveth line of iconfile",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
 
@@ -344,11 +372,13 @@ class IconHandler
                 if !string.startswith(tuple,'RGB_ALPHA')
                     log("IconHandler: Tupletype in pam-iconfile must be RGB_ALPHA",1)
                     iconfile.close()
+                    self.Iconbuffer[bufferslot] = bytes()
                     return nil
                 end
             else
                 log("IconHandler: Expecting TUPLETYPE in fiveth line of iconfile",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
             self.Iconbuffer[bufferslot].add(2000,-2) # 2 seconds delay for single images
@@ -383,11 +413,13 @@ class IconHandler
             if (width < 1) || (width >32)
                 log("IconHandler: Width in iconfile not between 1 and 32",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
             if (height < 1) || (height >8)
                 log("IconHandler: Height in iconfile not between 1 and 8",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
 
@@ -397,6 +429,7 @@ class IconHandler
             if (maxval < 1) || (maxval > 255)
                 log("IconHandler: Maxval not between 1 and 255",1)
                 iconfile.close()
+                self.Iconbuffer[bufferslot] = bytes()
                 return nil
             end
             self.Iconbuffer[bufferslot].add(2000,-2) # 2 seconds delay for single images
@@ -413,6 +446,7 @@ class IconHandler
     
         else
             log("IconHandler: Not supported file format",2)
+            self.Iconbuffer[bufferslot] = bytes()
 
         end
         
@@ -436,7 +470,8 @@ class IconHandler
             matrixController.clear(true, xoffset, yoffset, self.PrevWidth, self.PrevHeight)
         end
         # draw icon at index of iconbuffer, determine delay, set newindex
-        if self.Iconbuffer[iconbufferslot] == nil
+        if iconbufferslot == nil || self.Iconbuffer[iconbufferslot] == nil || self.Iconbuffer[iconbufferslot] == bytes()
+            tasmota.set_timer(200,/->self.drawmultipleicons(self.Currentbuffer, 0, xoffset, yoffset, minbright,clockfaceManager), self.InstanceID )
             return
         end
         var brightness

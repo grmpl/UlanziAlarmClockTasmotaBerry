@@ -42,6 +42,8 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
   - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really usefull
   - `{"action": "removefile", "filename": "test.pam"}` would remove file from filesystem and out of icon list.
   - `{"action": "showiotdlist"}` would show current icon list
+  - `{"action": "resetiotdlist"}` would reset iotd list to entry "iotd.pam" 
+  - `{"action": "cleariotdlist"}` would set iotd list to empty list
 - Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use. I've put a few self created icons in the specialicons-folder for reference. 
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
 Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, it can be changed with left and right button. With `setoption13 1` quick button presses and long press is possible for faster value change. (Note: Don't hold for too long, otherwise setoption13 will be deactivated - seems to be a Tasmota feature). Short press of middle butten switches to next value, long press saves new timer setting. 

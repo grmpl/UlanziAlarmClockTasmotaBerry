@@ -514,6 +514,12 @@ class ClockfaceManager
             persist.save()
             return true
 
+        elif payload_json['action'] == "cleariotdlist"
+            persist.iotdlist = []
+            mqtt.publish(outtopic,"{\"result\": \""+str(persist.member('iotdlist'))+"\"}")
+            persist.save()
+            return true
+
         
         else 
             log("ClockfaceManager: No valid action given, action: " + str(action),1)
