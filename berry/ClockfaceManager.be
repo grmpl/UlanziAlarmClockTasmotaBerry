@@ -509,7 +509,13 @@ class ClockfaceManager
         
         
         elif payload_json['action'] == "resetiotdlist"
-            persist.iotdlist = ['iotd.pam']
+            var iotdicons=[]
+            for file:path.listdir("/icons/")
+                if string.startswith(file,"iotd")
+                    iotdicons.push(file)
+                end
+            end
+            persist.iotdlist = [iotdicons[math.rand()%size(iotdicons)]]
             mqtt.publish(outtopic,"{\"result\": \""+str(persist.member('iotdlist'))+"\"}")
             persist.save()
             return true

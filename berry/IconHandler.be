@@ -117,10 +117,14 @@ class IconHandler
 
         try
             iconfile=open(filename,'rb')
-        except .. as err
-            log("IconHandler: Can't open iconfile " + filename + ", error: " + str(err),1)
-            self.Iconbuffer[bufferslot] = bytes()
-            return nil
+        except .. 
+            try
+                iconfile=open("/icons/"+filename,'rb')
+            except .. as err
+                log("IconHandler: Can't open iconfile " + filename + ", error: " + str(err),1)
+                self.Iconbuffer[bufferslot] = bytes()
+                return nil
+            end
         end
         iconfile.seek(fileindex)
         readbuffer=iconfile.readbytes(buffersize)

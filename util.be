@@ -8,6 +8,7 @@
 # load("util.be")
 # filesplit("upload.all")
 import string
+import path
 
 def filesplit(filename)
     var file=open(filename,"r") # only text files are allowed
@@ -47,7 +48,18 @@ def filesplit(filename)
     file.close()
 end
 
-            
+def moveiconstofolder()
+    for file:path.listdir("/")
+        if string.endswith(file, "miff")
+          path.rename("/"+file,"/icons/"+file)
+        end
+      end
+    for file:path.listdir("/")
+        if string.endswith(file, "pam")
+            path.rename("/"+file,"/icons/"+file)
+        end
+    end
+end
 
             
 
