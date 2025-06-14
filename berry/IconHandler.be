@@ -250,8 +250,9 @@ class IconHandler
                     delay = 10 * delay # 100 ticks per second
                 else 
                     delay = 1000 / int(header[keypos+17..keypos+20]) * delay
-                    if delay < 40 #too short delays will create problems in timing
-                        delay = 40
+                    if delay < 50 #too short delays will create problems in timing
+                        delay = 50
+                        log("IconHandler: Increased delay to 50msec",4)
                     end
                 end
                 #imagelist.push([delay,[]]) - a list will have too much overhead, we must stick to bytes buffer
