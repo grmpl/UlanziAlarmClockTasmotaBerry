@@ -38,7 +38,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
 - Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. Icons for this face are not part of github, due to possible license issues. The managing of the list is possible with MQTT. Topic for changes is tasmberry/\<device topic\>/iotd, result will be given in tasmberry/\<device topic\>/iotdout. Commands can be sent with JSON-payload:
   - `{"action": "addentry", "filename": "beer.pam"}` would add icon beer.pam to the icon list, file beer.pam must exist already
-  - `{"action": "removeentry", "filename": "beer.pam"}` would remove icon beer.pam from the icon list
+  - `{"action": "removeentry", "filename": "beer.pam"}` would remove all entries with beer.pam from the icon list
   - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really usefull
   - `{"action": "removefile", "filename": "test.pam"}` would remove file from filesystem and out of icon list.
   - `{"action": "showiotdlist"}` would show current icon list
@@ -74,9 +74,18 @@ Editing of alarm is possible by long press of middle button. The value to be cha
         #endif
 ```
 - Icon-files have to be converted with netpbm-tools or convert from imagemagick:
-  - (recommended) with imagemagick, for all icons, even animated ones and including transparency: `convert <inputfile> -type TrueColorAlpha +profile \* <outputfile.miff>`
+  - (recommended) with imagemagick, for all icons, even animated ones and including transparency:  
+    `convert <-delay 0|XX> <inputfile> -type TrueColorAlpha +profile \* <outputfile.miff>`  
+    Please note:
+    - Miff-Files must be `-type TrueColorAlpha`, otherwise they will be rejected by IconHandler
+    - Colour profiles must be removed from images (`+profile \*`), as Iconhandler can't handle profiles
+    - Animated icons are best created from animated Gifs. Animated Gifs can be generated in Gimp by putting each frame in a separate layer. You can specify delay time and frame combination in the name of the layer: `Layer 2 (700ms) (replace)` will keep frame for 700 milliseconds and replace previous frame, `combine` instead of `replace` will combine previous frame with current one. I haven't found a documentation for full syntax, but spaces inside of the brackets are not allowed. 
+    - You must use `-delay` when converting single image Gifs from Gimp! Gimp will always write a delay of 10 (=100msec) in single image Gifs. As Iconhandler is respecting this delay-information, icon will be displayed for 100msec only!
+    - `-delay 0` will delete delay-information from single images, but set delay to 0 for all frames in animations. `-delay XX` will set display time to XX centiseconds for all frames and single images. 
+    - Minimum delay time is 40msec, all delays below will be set to 40msec.
   - with netpbm for png-files with transparency, without animation: `pngtopam -alphapam <inputfile.png> > <outputfile.pam>`
   - with nepbmp for gif-files, without transparency, only first image of animation: `giftopnm -image=1 <inputfile> > <outputfile.pnm>`
+- GIF-Export of single images by Gimp will always create a delay-entry of 10 in gif and miff, resulting in icon to be displayed for only 100msec. I haven't found a way to avoid this or change to another delay time, as neither Gimp nor convert let you specify the delay for a single image. You have to change/delete it manually in the miff file or use a png for single images.
 - The code does have a lot of long running Berry code. Don't expect too much from a performance point of view. I tried to avoid too long blocking by deferred executions, but there are still blocks which would run several 100 msec. I'm happy with current response time, so I didn't do any more optimization.
 - The code is consuming a lot of memory, too. As the Ulanzi does not have any PSRAM, most letters in fonts.be are disabled to save memory. With this setting and after reworking some code which caused a memory leak, the clock is now running stable. 
 If you want to display more text, you have to try out how far you can go.
