@@ -87,7 +87,6 @@ Editing of alarm is possible by long press of middle button. The value to be cha
     - Minimum delay time is 50msec, all delay times below will be set to 50msec.
   - with netpbm for png-files with transparency, without animation: `pngtopam -alphapam <inputfile.png> > <outputfile.pam>`
   - with nepbmp for gif-files, without transparency, only first image of animation: `giftopnm -image=1 <inputfile> > <outputfile.pnm>`
-- GIF-Export of single images by Gimp will always create a delay-entry of 10 in gif and miff, resulting in icon to be displayed for only 100msec. I haven't found a way to avoid this or change to another delay time, as neither Gimp nor convert let you specify the delay for a single image. You have to change/delete it manually in the miff file or use a png for single images.
 - The code does have a lot of long running Berry code. Don't expect too much from a performance point of view. I tried to avoid too long blocking by deferred executions, but there are still blocks which would run several 100 msec. I'm happy with current response time, so I didn't do any more optimization.
 - The code is consuming a lot of memory, too. As the Ulanzi does not have any PSRAM, most letters in fonts.be are disabled to save memory. With this setting and after reworking some code which caused a memory leak, the clock is now running stable. 
 If you want to display more text, you have to try out how far you can go.
