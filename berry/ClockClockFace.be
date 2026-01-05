@@ -76,7 +76,8 @@ class ClockClockFace: BaseClockFace
 
         # Display alarm
                
-        for i:1..4
+        # Reduced to 3 alarm times for i:1..4
+        for i:1..3
             var timerstr = "Timer"+str(i)
             var timeract = tasmota.cmd("_"+timerstr,true)[timerstr]['Enable']
             

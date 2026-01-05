@@ -30,7 +30,7 @@ var clockFaces = [
     Alarm1ClockFace,
     Alarm2ClockFace,
     Alarm3ClockFace,
-    Alarm4ClockFace
+    # don't need 4 clockfaces Alarm4ClockFace
 ]
 
 class ClockfaceManager
@@ -153,6 +153,11 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
+        # if energysaveClockface active, reactivate current clockface
+        elif classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+            self.redraw()
         elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil ) # during alarmedit handling is done by AlarmClockface
                 self.currentClockFace.handleEditPrev(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
@@ -163,6 +168,7 @@ class ClockfaceManager
             self.redraw()
         # else ignore Clean with setoption13=1, ignore Hold with setoption13=0
         end
+
     end
 
     def on_button_action(value, trigger, msg)
@@ -216,6 +222,11 @@ class ClockfaceManager
             persist.snooze=1
             persist.save()
             self.snoozerunning = self.snoozetime
+            self.redraw()
+        # if energysaveClockface active, reactivate current clockface
+        elif classof(self.currentClockFace) == EnergysaveClockFace
+            self.currentClockFace.close()
+            self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
         elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditNext") != nil )
                 self.currentClockFace.handleEditNext(value)

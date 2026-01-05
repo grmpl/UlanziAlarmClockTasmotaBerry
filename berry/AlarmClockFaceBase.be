@@ -284,7 +284,8 @@ class AlarmClockFaceBase: BaseClockFace
 
         
         # Draw indicator which timer we see
-        for i:1..4
+        # reduced to 3 alarm faces for i:1..4
+        for i:1..3
             var icolor=self.clockfaceManager.color
             if i==self.alarmnumber
                 icolor=icolor ^ 0xffffff
