@@ -37,7 +37,7 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - You have multiple displays, which you can choose from by pressing left and right button.
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
 - Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face.  
-Icons for this face are not part of github, due to possible license issues. You must upload them to the device first (see below).  
+Due to possible license issues I've put only one self created animated Icon here on Github (dancing.miff in specialicons). You must upload all icons to the device first (see below).  
 The managing of the list is possible with MQTT. Topic for changes is tasmberry/\<device topic\>/iotd, result will be given in tasmberry/\<device topic\>/iotdout. Commands can be sent with JSON-payload:
   - `{"action": "addentry", "filename": "beer.pam"}` would add icon beer.pam to the icon list, file beer.pam must exist already
   - `{"action": "removeentry", "filename": "beer.pam"}` would remove all entries with beer.pam from the icon list
@@ -46,7 +46,8 @@ The managing of the list is possible with MQTT. Topic for changes is tasmberry/\
   - `{"action": "showiotdlist"}` would show current icon list
   - `{"action": "resetiotdlist"}` would clear icon list and put one random file out of all files beginning with "iotd" in Icondir on filesystem on the list.
   - `{"action": "cleariotdlist"}` would set iotd list to empty list
-- Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use. I've put a few self created icons in the specialicons-folder for reference. 
+- Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use.  
+Icons must be uploaded to the device, too. I've put a few self created icons in the specialicons-folder for reference. Please check the code for all the icons you would need for proper display of the weather.
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
 Editing of alarm is possible by long press of middle button. The value to be changed (hour, minute, repeat) is set to different color, it can be changed with left and right button. With `setoption13 1` quick button presses and long press is possible for faster value change. (Note: Don't hold for too long, otherwise setoption13 will be deactivated - seems to be a Tasmota feature). Short press of middle butten switches to next value, long press saves new timer setting. 
 - If alarm starts, buzzer will beep. Beeping will start slowly and repetition intervall will be increased in time. During alarm *any* button press on any face will activate Snooze.
