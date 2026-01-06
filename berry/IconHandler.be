@@ -1,4 +1,5 @@
 import string
+import global
 
 class IconHandler
 # Class for loading and displaying icons from files, including animations.
@@ -45,6 +46,7 @@ class IconHandler
 # The official format definition of ppm and pam would allow for more variations of the formatting, but this code requires exactly the given formats
 # Netpbm would allow for animations, too, but giftopnm can only create ppm which does not support alpha-channel and png does not support animations, so I switched to miff instead.
 
+    var IconfileDir
     var Iconbuffer
     var Currentbuffer
     var Iconlist
@@ -65,6 +67,11 @@ class IconHandler
         self.Iconlistindex=0 # index for the list of files
         self.InstanceID=str(tasmota.millis())
         self.IconlistRunning=false
+        if global.contains('GlobalIconfileDir')
+            self.IconfileDir=GlobalIconfileDir
+        else
+            self.IconfileDir=""
+        end
     end
 
     def deinit()
@@ -119,7 +126,7 @@ class IconHandler
             iconfile=open(filename,'rb')
         except .. 
             try
-                iconfile=open("/icons/"+filename,'rb')
+                iconfile=open(self.IconfileDir + filename,'rb')
             except .. as err
                 log("IconHandler: Can't open iconfile " + filename + ", error: " + str(err),1)
                 self.Iconbuffer[bufferslot] = bytes()

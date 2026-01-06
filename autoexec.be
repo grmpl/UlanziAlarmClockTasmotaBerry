@@ -1,5 +1,7 @@
 import ClockfaceManager
 
+var GlobalIconfileDir="0Icons/"
+
 var _clockfaceManager = ClockfaceManager() # global definition to be able to access it in case of debugging
 
 def startClock()

@@ -22,7 +22,6 @@ import Alarm4ClockFace
 import EnergysaveClockFace
 
 
-
 var clockFaces = [
     ClockClockFace,
     DateClockFace,
@@ -51,6 +50,7 @@ class ClockfaceManager
     var energysaveoverride # override energy saving mode with button action
     var energysaveClockfaceActive
     var lowerbrightnessActive
+    var IconfileDir
 
     static snoozetime=360 # 6 minutes
     static buttonholdtimerID="buttonhold" # for removing timer
@@ -66,6 +66,12 @@ class ClockfaceManager
         self.energysaveoverride=tasmota.millis()
         self.energysaveClockfaceActive = false
         self.lowerbrightnessActive = false
+        if global.contains('GlobalIconfileDir')
+            self.IconfileDir=GlobalIconfileDir
+        else
+            self.IconfileDir=""
+        end
+
 
         self.brightness = 50;
         self.color = 0xff0000
@@ -413,7 +419,7 @@ class ClockfaceManager
             var file
 
             try
-                file=open(filename,'wb')
+                file=open(self.IconfileDir + filename,'wb')
             except .. as err
                 log("ClockfaceManager: Can't open file for writing: " + str(filename) + ", error: " + str(err),1)
                 mqtt.publish(outtopic,"{\"result\": \"file open error\"}")
@@ -457,7 +463,7 @@ class ClockfaceManager
 
             persist.iotdlist=iotdlist
             persist.save()
-            path.remove(filename)
+            path.remove(self.IconfileDir + filename)
             mqtt.publish(outtopic,"{\"result\": \""+str(iotdlist)+"\"}")
             return true
 
@@ -521,7 +527,7 @@ class ClockfaceManager
         
         elif payload_json['action'] == "resetiotdlist"
             var iotdicons=[]
-            for file:path.listdir("/icons/")
+            for file:path.listdir(self.IconfileDir)
                 if string.startswith(file,"iotd")
                     iotdicons.push(file)
                 end
