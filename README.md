@@ -36,13 +36,15 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Activating and deactivating of timers is possible at the clock.
 - You have multiple displays, which you can choose from by pressing left and right button.
 - Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
-- Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. Icons for this face are not part of github, due to possible license issues. You must upload them to the device first (see below). The managing of the list is possible with MQTT. Topic for changes is tasmberry/\<device topic\>/iotd, result will be given in tasmberry/\<device topic\>/iotdout. Commands can be sent with JSON-payload:
+- Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face. 
+Icons for this face are not part of github, due to possible license issues. You must upload them to the device first (see below). 
+The managing of the list is possible with MQTT. Topic for changes is tasmberry/\<device topic\>/iotd, result will be given in tasmberry/\<device topic\>/iotdout. Commands can be sent with JSON-payload:
   - `{"action": "addentry", "filename": "beer.pam"}` would add icon beer.pam to the icon list, file beer.pam must exist already
   - `{"action": "removeentry", "filename": "beer.pam"}` would remove all entries with beer.pam from the icon list
-  - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really usefull
-  - `{"action": "removefile", "filename": "test.pam"}` would remove file from filesystem and out of icon list.
+  - `{"action": "addfile", "filename": "test.pam", "content": "UDcKV0..."}` would add a file to Icondir on filesystem and then to list of icons to display, content is file content with base64-encoding. Only works for small files <1k, so not really usefull
+  - `{"action": "removefile", "filename": "test.pam"}` would remove file from Icondir on filesystem and out of icon list.
   - `{"action": "showiotdlist"}` would show current icon list
-  - `{"action": "resetiotdlist"}` would reset iotd list to entry "iotd.pam" 
+  - `{"action": "resetiotdlist"}` would clear icon list and put one random file out of all files beginning with "iotd" in Icondir on filesystem on the list.
   - `{"action": "cleariotdlist"}` would set iotd list to empty list
 - Next display shows the weather at noon and 6 PM for current day and after 6 PM for the next day. Here you can display two icons up to a format of 16x8 for the weather. Even transparency is handled, but transparency effect is highly dependend on brightness, so it's difficult to use. I've put a few self created icons in the specialicons-folder for reference. 
 - Next 4 displays show the 4 alarm times. You can activate/deactivate the alarm by pressing the middle button. Active alarm is shown by a green clock, deactivated alarm by a red clock. The indicator in the middle tells you which of the 4 alarm times you are seeing.  
@@ -87,7 +89,7 @@ Editing of alarm is possible by long press of middle button. The value to be cha
     - Minimum delay time is 50msec, all delay times below will be set to 50msec.
   - with netpbm for png-files with transparency, without animation: `pngtopam -alphapam <inputfile.png> > <outputfile.pam>`
   - with nepbmp for gif-files, without transparency, only first image of animation: `giftopnm -image=1 <inputfile> > <outputfile.pnm>`
-- After converting the files, please upload them to folder "0Icons/" on the device. A subfolder can be created in Web-Frontend by specifying a folder path when saving a file. If you want to use another subfolder, please adapt GlobalIconfileDir in autoexec.be
+- After converting the files, please upload them to folder `0Icons/` on the device. A subfolder can be created in Web-Frontend by specifying a folder path when saving a file. If you want to use another subfolder, please adapt `GlobalIconfileDir` in autoexec.be
 - The code does have a lot of long running Berry code. Don't expect too much from a performance point of view. I tried to avoid too long blocking by deferred executions, but there are still blocks which would run several 100 msec. I'm happy with current response time, so I didn't do any more optimization.
 - The code is consuming a lot of memory, too. As the Ulanzi does not have any PSRAM, most letters in fonts.be are disabled to save memory. With this setting and after reworking some code which caused a memory leak, the clock is now running stable. 
 If you want to display more text, you have to try out how far you can go.
