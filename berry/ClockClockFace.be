@@ -1,20 +1,116 @@
 import BaseClockFace
+import IconHandler
 import string
 import persist
+import mqtt
 
 class ClockClockFace: BaseClockFace
 
     var weather
+    var shutter
+    var iconHandlerL
+    var iconHandlerR
+    var shuttericonclose
+    var shuttericonopen
+    var shutterMove
+
 
     def init(clockfaceManager)
         super(self).init(clockfaceManager)
         # will be called in render
         # self.matrixController.clear()
         self.weather = self.clockfaceManager.weather
+        self.shutter = false
+        self.shuttericonclose = "shutterclose.miff"
+        self.shuttericonopen = "shutteropen.miff"
+        self.shutterMove = false
+    end
+    
+    def handleActionButton(value)
+        var so13 = tasmota.get_option(13)
+        log("handleActionButton: value="+str(value)+" so13="+str(so13)+" shutter:"+str(self.shutter),2)
+        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
+            self.shutter = !self.shutter
+            # if button was pressed on normal face, stopp shutter and initialize IconHandler
+            if self.shutter
+                mqtt.publish("cmnd/rollschlaf/shutterstop","") # open shutter on button press
+                self.shutterMove = false
+                self.iconHandlerL = IconHandler()
+                self.iconHandlerR = IconHandler()
+                # We "misuse" the alarmedit flag here - should be renamed
+                # Does not work: Alarmedit will stop refresh of clockface
+                #   Needs some rework: 
+                #     - Handle buttons with secondface instead of alarmedit flag and handle2ndPrev/handle2ndNext
+                #     - additionally set alarmedit to true in AlarmClockFace to stop clockface refresh in alarmedit
+                self.clockfaceManager.alarmedit = true
+            else
+                self.clockfaceManager.alarmedit = false
+                self.iconHandlerL.stopiconlist()
+                self.iconHandlerR.stopiconlist()
+                self.iconHandlerL = nil
+                self.iconHandlerR = nil
+            end
+        end
+    end
+
+    def handleEditPrev(value)
+        # should only be called when alarmedit is true
+        # action depends on setoption13
+        var so13 = tasmota.get_option(13)
+        log("handleEditPrev: value="+str(value)+" so13="+str(so13),2)
+        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
+            # if shutter is moving, stop it, if it is stopped, open it
+            if self.shutterMove
+                mqtt.publish("cmnd/rollschlaf/shutterstop","") # open shutter on button press
+                self.shutterMove = false
+            else
+                mqtt.publish("cmnd/rollschlaf/shutterclose","") # open shutter on button press
+                self.shutterMove = true
+            end
+        end
+
+    end
+
+    def handleEditNext(value)
+        # should only be called when alarmedit is true
+        # action depends on setoption13
+        var so13 = tasmota.get_option(13)
+        log("handleEditNext: value="+str(value)+" so13="+str(so13),2)
+        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
+            # if shutter is moving, stop it, if it is stopped, close it
+            if self.shutterMove
+                mqtt.publish("cmnd/rollschlaf/shutterstop","") # close shutter on button press
+                self.shutterMove = false
+            else
+                mqtt.publish("cmnd/rollschlaf/shutteropen","") # close shutter on button press
+                self.shutterMove = true
+            end
+        end
     end
 
     def render()
         self.matrixController.clear()
+        if self.shutter
+             self.renderShutter()
+        else
+             self.renderClock()
+        end
+    end
+
+    def renderShutter()
+        if !self.iconHandlerL.IconlistRunning 
+            self.iconHandlerL.stopiconlist()
+            self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager,"ShutterCFDrawid") 
+        end
+        if !self.iconHandlerR.IconlistRunning 
+            self.iconHandlerR.stopiconlist()
+            self.iconHandlerR.starticonlist([self.shuttericonopen],24,0,40,self.clockfaceManager,"ShutterCFDrawid") 
+        end
+        #self.matrixController.change_font('MatrixDisplay3x5')
+        #self.matrixController.print_string("SHUTTER", 11, 0, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+    end
+
+    def renderClock()
         var rtc = tasmota.rtc()
 
         var hour_str = tasmota.strftime('%H', rtc['local'])
