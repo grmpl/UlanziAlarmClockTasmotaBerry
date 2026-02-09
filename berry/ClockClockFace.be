@@ -100,11 +100,11 @@ class ClockClockFace: BaseClockFace
     def renderShutter()
         if !self.iconHandlerL.IconlistRunning 
             self.iconHandlerL.stopiconlist()
-            self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager,"ShutterCFDrawid") 
+            self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager) 
         end
         if !self.iconHandlerR.IconlistRunning 
             self.iconHandlerR.stopiconlist()
-            self.iconHandlerR.starticonlist([self.shuttericonopen],24,0,40,self.clockfaceManager,"ShutterCFDrawid") 
+            self.iconHandlerR.starticonlist([self.shuttericonopen],24,0,40,self.clockfaceManager) 
         end
         #self.matrixController.change_font('MatrixDisplay3x5')
         #self.matrixController.print_string("SHUTTER", 11, 0, false, self.clockfaceManager.color, self.clockfaceManager.brightness)

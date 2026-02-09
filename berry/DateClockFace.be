@@ -51,7 +51,7 @@ class DateClockFace: BaseClockFace
             if !self.iconHandler.IconlistRunning || self.iconHandler.Iconlist != iotdlist
                 self.iconHandler.stopiconlist()
                 self.matrixController.clear(true)
-                self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager,"DateCFDrawid") 
+                self.iconHandler.starticonlist(persist.member('iotdlist'),0,0,40,self.clockfaceManager) 
             end
 
             self.matrixController.change_font('MatrixDisplay3x5')

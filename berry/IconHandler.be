@@ -81,7 +81,7 @@ class IconHandler
         #log("IconHandler: Deinit finish",2)
     end
 
-    def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager,drawid) # starts displaying a list of icon-files
+    def starticonlist(iconlist,xoffset,yoffset,minbright,clockfaceManager) # starts displaying a list of icon-files
         var filename
         if iconlist != []
             self.Iconlist=iconlist
@@ -472,7 +472,7 @@ class IconHandler
     end
 
 
-    def drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager,drawid)
+    def drawmultipleicons(iconbufferslot, iconbufferindex, xoffset, yoffset, minbright, clockfaceManager)
         #clockfaceManager.energysaveoverride=tasmota.millis()
         #log("drawmultipleicons called with " + str(iconbufferslot) + " " + str(iconbufferindex) + " " + str(clockfaceManager),2 )
         var listsize = size(self.Iconlist)
