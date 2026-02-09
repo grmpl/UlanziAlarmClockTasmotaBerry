@@ -177,18 +177,18 @@ class ClockClockFace: BaseClockFace
             var timerstr = "Timer"+str(i)
             var timeract = tasmota.cmd("_"+timerstr,true)[timerstr]['Enable']
             
-            if persist.member('snooze') == 1 && ((self.clockfaceManager.snoozerunning*4/self.clockfaceManager.snoozetime)+1 >= i)
-                self.matrixController.set_matrix_pixel_color(27+i, 0, 0x0000ff, self.clockfaceManager.brightness)
+            if persist.member('snooze') == 1 && ((self.clockfaceManager.snoozerunning*3/self.clockfaceManager.snoozetime)+1 >= i)
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0x0000ff, self.clockfaceManager.brightness)
             elif persist.member('alarmactive') == i
                 #Alarm active
-                self.matrixController.set_matrix_pixel_color(27+i, 0, 0xffff00, self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0xffff00, self.clockfaceManager.brightness)
             elif
                 timeract == 0
-                self.matrixController.set_matrix_pixel_color(27+i, 0, 0xff0000, self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0xff0000, self.clockfaceManager.brightness)
             elif timeract == 1
-                self.matrixController.set_matrix_pixel_color(27+i, 0, 0x00ff00, self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0x00ff00, self.clockfaceManager.brightness)
             else
-                self.matrixController.set_matrix_pixel_color(27+i, 0, 0x000000, self.clockfaceManager.brightness)
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0x000000, self.clockfaceManager.brightness)
             end
         end
   
