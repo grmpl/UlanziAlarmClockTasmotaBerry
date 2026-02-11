@@ -103,7 +103,8 @@ class AlarmClockFaceBase: BaseClockFace
 
     def startedit()
         self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
-        self.clockfaceManager.alarmedit = true
+        self.clockfaceManager.alarmedit = true # only for controlling redrawing
+        self.clockfaceManager.subfaceshown = true # will control handling of prev and next button
         self.EditField=0
         self.EditHour=99
         self.EditMinute=99

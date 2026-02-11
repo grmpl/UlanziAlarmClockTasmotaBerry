@@ -29,22 +29,17 @@ class ClockClockFace: BaseClockFace
     def handleActionButton(value)
         var so13 = tasmota.get_option(13)
         log("handleActionButton: value="+str(value)+" so13="+str(so13)+" shutter:"+str(self.shutter),2)
-        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
+        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only, otherwise there will be only one button action
             self.shutter = !self.shutter
             # if button was pressed on normal face, stopp shutter and initialize IconHandler
             if self.shutter
-                mqtt.publish("cmnd/rollschlaf/shutterstop","") # open shutter on button press
-                self.shutterMove = false
-                self.iconHandlerL = IconHandler()
-                self.iconHandlerR = IconHandler()
-                # We "misuse" the alarmedit flag here - should be renamed
-                # Does not work: Alarmedit will stop refresh of clockface
-                #   Needs some rework: 
-                #     - Handle buttons with secondface instead of alarmedit flag and handle2ndPrev/handle2ndNext
-                #     - additionally set alarmedit to true in AlarmClockFace to stop clockface refresh in alarmedit
-                self.clockfaceManager.alarmedit = true
+                mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop any shutter movement
+                self.shutterMove = false # and remember that shutter has stopped
+                self.iconHandlerL = IconHandler() # get an iconhandler for drawing left icon
+                self.iconHandlerR = IconHandler() # get an iconhandler for drawing right icon
+                self.clockfaceManager.subfaceshown = true # will redirect prev and next button to this clockface
             else
-                self.clockfaceManager.alarmedit = false
+                self.clockfaceManager.subfaceshown = false
                 self.iconHandlerL.stopiconlist()
                 self.iconHandlerR.stopiconlist()
                 self.iconHandlerL = nil

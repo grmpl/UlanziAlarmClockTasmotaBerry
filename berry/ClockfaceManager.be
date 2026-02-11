@@ -34,26 +34,27 @@ var clockFaces = [
 
 class ClockfaceManager
     # ClockfaceHandling
-    var matrixController
-    var alarmHandler
-    var weather
-    var brightness
-    var color
-    var currentClockFace
-    var currentClockFaceIdx
-    var lastredraw # introduced to avoid unnecessary redraws in short time
+    var matrixController # one Matrixcontroller-instance for all clockfaces
+    var alarmHandler # one global AlarmHandler-instance
+    var weather # one global weather instance, init takes time and resources, refresh should be done seldom
+    var brightness # needed in all drawing functions
+    var color  # default color for all clockfaces
+    var currentClockFace # current active clockface-instance
+    var currentClockFaceIdx # current index of active clockface in clockFaces list (for switching back and forth)
+    var lastredraw # timestamp avoid unnecessary time consuming redraws after short time
+    var subfaceshown # indicates if subface is shown, in subface prev and back will be handled by clockface, not by clockfacemanager
+    var buttonholddone # for hold-actions: after hold-action is done, clear-action of buttons must be ignored
+    var IconfileDir # subdir for iconfiles
     # Alarmhandling
-    var snoozerunning # indicates snooze being active for indication on all faces
-    var alarmedit # indicates edit-mode on alarm faces to redirect button actions
-    var buttonholddone # necessary to ignore clear-values of button after hold-action was done
+    var snoozerunning # indicates snooze being active for showing state on faces and handling button actions
+    var alarmedit # indicates edit-mode on alarm faces to control redwawing (button action will be controlled by sufaceshown)
     # Handling energy saving states
-    var energysaveoverride # override energy saving mode with button action
-    var energysaveClockfaceActive
-    var lowerbrightnessActive
-    var IconfileDir
+    var energysaveoverride # indicates a button press which will override the energsave for some time
+    var energysaveClockfaceActive # indicates that energysaveClockface is currently active
+    var lowerbrightnessActive # pre-stage of energysaveClockface
 
-    static snoozetime=360 # 6 minutes
-    static buttonholdtimerID="buttonhold" # for removing timer
+    static snoozetime=360 # 6 minutes snooze time parametrization
+    static buttonholdtimerID="buttonhold" # necessary for removing timer
 
 
     def init()
@@ -164,7 +165,7 @@ class ClockfaceManager
             self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
-        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil ) # during alarmedit handling is done by AlarmClockface
+        elif self.subfaceshown && ( introspect.get(self.currentClockFace, "handleEditPrev") != nil ) # during subface, prev and next should be handled by current clockface, but only if method exists
                 self.currentClockFace.handleEditPrev(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only single-action, not clear-action, with setoption13=0 use clear after hold and all other actions
             self.currentClockFaceIdx = (self.currentClockFaceIdx + (size(clockFaces) - 1)) % size(clockFaces)
@@ -234,7 +235,7 @@ class ClockfaceManager
             self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
-        elif self.alarmedit && ( introspect.get(self.currentClockFace, "handleEditNext") != nil )
+        elif self.subfaceshown && ( introspect.get(self.currentClockFace, "handleEditNext") != nil ) # during subface, prev and next should be handled by current clockface, but only if method exists
                 self.currentClockFace.handleEditNext(value)
         elif ( so13 == 1 && value == 10 ) || (so13 == 0 && value > 9) # with setoption13=1 use only Single, with setoption13=0 use Clean on hold and all other values
             self.currentClockFaceIdx = (self.currentClockFaceIdx + 1) % size(clockFaces)
@@ -364,7 +365,7 @@ class ClockfaceManager
         # print("Brightness: ", self.brightness, ", Illuminance: ", illuminance);
 
         self.brightness = brightness
-        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # Only update if no alarmedit and 500msec since last redraw
+        if !self.alarmedit && tasmota.time_reached(self.lastredraw+500) # in alarm edit mode, redrawing must be controlled by clockface to control flashing of numbers
             tasmota.set_timer(50,/->self.redraw(),"redrawtimer")
         end
     end
