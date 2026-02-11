@@ -6,8 +6,8 @@ class MatrixController
     # this version is using blend_color to enable continuous transparency - I'm not sure if this is a good idea
     var leds
     # var matrix # matrix does not work correctly, working without matrix
-    var foreground 
-    var background
+    var foreground # handle foreground and background differently 
+    var background # handle foreground and background differently
     var font
     var font_width
     static var row_size=8
@@ -59,7 +59,7 @@ class MatrixController
     end
 
     def clear(fg,x,y,w,h)
-
+        # foreground will only be cleared if it is set to true, optionally area can be defined by x,y, width and height
         if !fg # not foreground
             # Let's try if this works out - blend_color costs time, with this loop we will need ~50msec
             # Alternatively we could handle transparency a either full or no and just set pixels_buffer to foreground, 

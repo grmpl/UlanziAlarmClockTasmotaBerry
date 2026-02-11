@@ -42,6 +42,7 @@ class ClockClockFace: BaseClockFace
                 self.clockfaceManager.subfaceshown = false
                 self.iconHandlerL.stopiconlist()
                 self.iconHandlerR.stopiconlist()
+                self.matrixController.clear(true) # must clear foreground, as this will not be done by render
                 self.iconHandlerL = nil
                 self.iconHandlerR = nil
             end
