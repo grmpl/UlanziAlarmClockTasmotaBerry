@@ -25,6 +25,20 @@ class ClockClockFace: BaseClockFace
         self.shuttericonopen = "shutteropen.miff"
         self.shutterMove = false
     end
+
+    def close()
+        # Usually clockface will only be ended on main clockface with prev/next button
+        #   But clockface could end in subface mode, too, for example when energysaveClockface is started
+        #   so Iconhandler musst be cleaned up with close-method
+        if self.iconHandlerL != nil
+            self.iconHandlerL.stopiconlist()
+            self.iconHandlerL = nil
+        end
+        if self.iconHandlerR != nil
+            self.iconHandlerR.stopiconlist()
+            self.iconHandlerR = nil
+        end
+    end
     
     def handleActionButton(value)
         var so13 = tasmota.get_option(13)

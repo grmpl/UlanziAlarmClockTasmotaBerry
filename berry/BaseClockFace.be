@@ -23,7 +23,7 @@ class BaseClockFace
     end
 
     def close()
-        # dummy
+        # dummy, should be overloaded in child classes if there is something to clean up
     end
 
 
