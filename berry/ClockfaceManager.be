@@ -7,6 +7,7 @@ import webserver
 import path
 import string
 import mqtt
+import ULP
 
 import MatrixController
 import AlarmHandler
@@ -59,6 +60,8 @@ class ClockfaceManager
 
     def init()
         log("ClockfaceManager Init",3);
+        # switch on power plug in case we come from deep sleep with power plug off
+        mqtt.publish("cmnd/Weckerstecker/Power","On")
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
         self.weather = Weather()
@@ -160,8 +163,9 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
-        # if energysaveClockface active, reactivate current clockface
+        # if energysaveClockface active, switch on power plug and reactivate current clockface
         elif classof(self.currentClockFace) == EnergysaveClockFace
+            mqtt.publish("cmnd/Weckerstecker/Power","On")
             self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
@@ -180,8 +184,9 @@ class ClockfaceManager
 
     def on_button_action(value, trigger, msg)
         self.energysaveoverride=tasmota.millis()
-        # if energysaveClockface active, reactivate current clockface
+        # if energysaveClockface active, switch on power plug and reactivate current clockface
         if classof(self.currentClockFace) == EnergysaveClockFace
+            mqtt.publish("cmnd/Weckerstecker/Power","On")
             self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
@@ -230,8 +235,9 @@ class ClockfaceManager
             persist.save()
             self.snoozerunning = self.snoozetime
             self.redraw()
-        # if energysaveClockface active, reactivate current clockface
+        # if energysaveClockface active, switch on power plug and reactivate current clockface
         elif classof(self.currentClockFace) == EnergysaveClockFace
+            mqtt.publish("cmnd/Weckerstecker/Power","On")
             self.currentClockFace.close()
             self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
             self.redraw()
@@ -307,14 +313,31 @@ class ClockfaceManager
     def update_brightness_from_sensor()
         var waitoverride = 60000 # 1 Minute override after button press
         var ulowerbrightnessl = 2800 # voltage level to lower brightness
-        var ulowerbrightnessh = 2840 # voltage level to go back to normal brightness
+        var ulowerbrightnessh = 2840 # voltage level to go back to normal brightness - normal voltage without power plug is around 2830, so brightness will always be reduced without external power 
         var uenergysavefacel = 2770 # voltage level to switch to EnergysaveClockFace
         var uenergysavefaceh = 2810 # voltage level to switch back to normal ClockFace
+        var udeepsleep = 2750 # voltage level to go to deep sleep
         var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
         var illuminance = sensors['ANALOG']['Illuminance1']
         var voltage = sensors['ANALOG']['A2']
         if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
             #log("no override",2)
+            if voltage < udeepsleep
+                log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage),3)
+                # Providing Button-GPIOs to ULP to wake up on button press)
+                ULP.gpio_init(gpio.pin(gpio.KEY1,0),0)
+                ULP.gpio_init(gpio.pin(gpio.KEY1,1),0)
+                ULP.gpio_init(gpio.pin(gpio.KEY1,2),0)
+                # Wake up every 100ms to check button state, will not wake up SoC, so 100msec should be good for responsiveness
+                ULP.wake_period(0,100000)
+                # Code from Wakeup.py
+                var c = bytes().fromb64("dWxwAAwATAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CMQGAcgQAANAQAAByBAAAaAAAAJIAAACwQQGAcgQAANAQAAByBAAAaAEAAJAAAACSAAAAsAAAAAAAAAAA")
+                ULP.load(c)
+                ULP.run()
+                ULP.sleep() # sleep indefinitely 
+            end
+
+                
             if ( voltage < uenergysavefacel ) && !self.energysaveClockfaceActive# display a "screensaver"-Clockface to reduce LED wearout
                 log("ClockfaceManager: Activated energysaveClockFace",3)
                 self.energysaveClockfaceActive = true
