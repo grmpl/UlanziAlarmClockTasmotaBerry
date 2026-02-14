@@ -61,7 +61,8 @@ class ClockfaceManager
     def init()
         log("ClockfaceManager Init",3);
         # switch on power plug in case we come from deep sleep with power plug off
-        mqtt.publish("cmnd/Weckerstecker/Power","On")
+        # as we are just starting we have to wait for MQTT!
+        self.wait_for_mqtt_and_publish("cmnd/Weckerstecker/Power","On")
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
         self.weather = Weather()
@@ -578,6 +579,16 @@ class ClockfaceManager
         return true
 
     end    
+
+    # Wait for MQTT to be connected and then send the given message
+    def wait_for_mqtt_and_publish(topic, message)
+        if mqtt.connected()
+            mqtt.publish(topic, message)
+        else
+            log("ClockfaceManager: MQTT not connected yet, waiting...",2)
+            tasmota.set_timer(2000, /-> self.wait_for_mqtt_and_publish(topic, message), "mqttwaittimer")
+        end
+    end
 
     # Some cleanups for gracefull shutdown
     def save_before_restart()
