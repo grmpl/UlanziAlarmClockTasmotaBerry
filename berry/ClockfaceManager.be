@@ -325,6 +325,8 @@ class ClockfaceManager
             #log("no override",2)
             if voltage < udeepsleep
                 log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage),3)
+                self.currentClockFace.close()
+                self.matrixController.leds.clear()
                 # Providing Button-GPIOs to ULP to wake up on button press)
                 ULP.gpio_init(gpio.pin(gpio.KEY1,0),0)
                 ULP.gpio_init(gpio.pin(gpio.KEY1,1),0)
