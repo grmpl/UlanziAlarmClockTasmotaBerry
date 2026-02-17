@@ -31,6 +31,12 @@ var clockFaces = [
     Alarm2ClockFace,
     Alarm3ClockFace,
     # don't need 4 clockfaces Alarm4ClockFace
+    # Number of Alarms is hardcoded, there is no single parameter to control it
+    #  Must be changed at:
+    #  - here
+    #  - here in update_brightness_from_sensor(), where the timers are searched for next alarm 
+    #  - in ClockClockface for AlarmIndicator (for i:1..3|4, snoozerunning*3|4/self...,  set_matrix_pixel_color(27|28+i )
+    #  - in AlarmClockFaceBase for AlarmIndicator 
 ]
 
 class ClockfaceManager
@@ -324,7 +330,9 @@ class ClockfaceManager
         if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
             #log("no override",2)
             if voltage < udeepsleep
+                # This is not worth the effort - seems to save only little of energy, but as it is implemented, I will keep it 
                 log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage),3)
+
                 self.currentClockFace.close()
                 self.matrixController.leds.clear()
                 # Providing Button-GPIOs to ULP to wake up on button press)
@@ -337,7 +345,7 @@ class ClockfaceManager
                 var c = bytes().fromb64("dWxwAAwATAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CMQGAcgQAANAQAAByBAAAaAAAAJIAAACwQQGAcgQAANAQAAByBAAAaAEAAJAAAACSAAAAsAAAAAAAAAAA")
                 ULP.load(c)
                 ULP.run()
-                ULP.sleep() # sleep indefinitely 
+                ULP.sleep(self.getnextalarmtime(false)-100) # sleep until next alarm, if no alarm, sleep indefinitely until button press
             end
 
                 
@@ -410,7 +418,7 @@ class ClockfaceManager
             action = payload_json['action']
         except .. as err
             log("ClockfaceManager: Could not find action-key in MQTT-message, error:" + str(err),1)
-            mqtt.publish(outtopic,"{\"result\": \"no filename given\"}")
+            mqtt.publish(outtopic,"{\"result\": \"no action given\"}")
             return true
         end
         
@@ -611,6 +619,68 @@ class ClockfaceManager
             print("The bee, of course, flies anyway, because bees don't care what humans think is impossible")
         end
     end
+
+    def getnextalarmtime(absolute)
+        var time=tasmota.rtc()['local']
+        var today = tasmota.strftime("%Y %m %d",tasmota.rtc()['local'])
+        var dayofweek=tasmota.time_dump(time)['weekday']
+        var latesttime = time + (7*24*3600) + 10 # latest next time can be in next week, as Tasmota timers are scheduled on weekly base
+        var nexttimer = latesttime # initialize with latest time to compare
+
+        for i:1..3 # Number of Alarms is hardcoded
+            var timerstr = "Timer"+str(i)
+            var timerout=tasmota.cmd("_"+timerstr,true)[timerstr]
+            if timerout['Enable'] == 1 # only enabled timers should be considered
+                var activetime
+                var todaytime
+      
+                if timerout['Mode'] == 1 #Sunrise timer: We only can get sunrise for today, there is no function in Tasmota to get sunrise for any day
+                    if timerout['Time'][0] == "-" # next problem: strptime could convert negative time, but only if hour is negative, if hour is 0, it would be treated as positive
+                        # get sunrise of today and subtract the offset
+                        todaytime = tasmota.strptime(today+" "+tasmota.cmd("Status 7")['StatusTIM']['Sunrise'],"%Y %m %d %H:%M")['epoch'] - tasmota.strptime("1970 01 01 "+timerout['Time'][1..5],"%Y %m %d %H:%M")['epoch']
+                    else
+                        # get sunrise of today and add the offset
+                        todaytime = tasmota.strptime(today+" "+tasmota.cmd("Status 7")['StatusTIM']['Sunrise'],"%Y %m %d %H:%M")['epoch'] + tasmota.strptime("1970 01 01 "+timerout['Time'],"%Y %m %d %H:%M")['epoch']
+                    end
+                elif timerout['Mode'] == 2 #Sunset timer
+                    if timerout['Time'][0] == "-" # see above
+                        # get sunset of today and subtract the offset
+                        todaytime = tasmota.strptime(today+" "+tasmota.cmd("Status 7")['StatusTIM']['Sunset'],"%Y %m %d %H:%M")['epoch'] - tasmota.strptime("1970 01 01 "+timerout['Time'][1..5],"%Y %m %d %H:%M")['epoch']
+                    else
+                        # get sunset of today and add the offset
+                        todaytime = tasmota.strptime(today+" "+tasmota.cmd("Status 7")['StatusTIM']['Sunset'],"%Y %m %d %H:%M")['epoch'] + tasmota.strptime("1970 01 01 "+timerout['Time'],"%Y %m %d %H:%M")['epoch']
+                    end
+                else
+                    todaytime=tasmota.strptime(today+" "+timerout['Time'],"%Y %m %d %H:%M")['epoch']
+                end
+      
+                if time < todaytime && timerout['Days'][dayofweek] == "1" # if timer is active today and time is in future, next time is todaytime
+                    activetime = todaytime
+                else # we have to search for next active day
+                    for day: 1..6
+                        if timerout['Days'][(dayofweek+day)%7] == "1" # first day with timer active
+                            activetime = todaytime + ( day * 3600 * 24)
+                            break # don't have to search further, we only need the next active time
+                        end
+                    end
+                end
+                if activetime < nexttimer
+                    nexttimer = activetime
+                end
+
+            end
+        end
+        if nexttimer == latesttime
+            return nil # no active timer found
+        else
+            if absolute
+                return nexttimer
+            else
+                return nexttimer - time # return time to next alarm, not absolute time
+            end
+        end
+    end
+
 end
 
 return ClockfaceManager
