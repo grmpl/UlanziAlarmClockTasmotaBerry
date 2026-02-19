@@ -35,7 +35,8 @@ You can add RTC-support, too, if you are already compilint. See Additional Infor
 - Timers 1-4 in Tasmota are available for setting an alarm time. Don't forget to activate timers in general and set timers to repeat if you want to use them more than once.
 - Activating and deactivating of timers is possible at the clock.
 - You have multiple displays, which you can choose from by pressing left and right button.
-- Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.
+- Main display shows time, temperature and an alarm indicator. The alarm indicator is a line of 4 Pixels, where every pixel indicates the status of an alarm time: Red=deactivated, green=activated, yellow=alarm running, purple=no alarm, because rule1 or timers is off. If Snooze is active, the indicator first turns completely to blue, then going back to normal color pixel by pixel until Snooze time is ended.  
+With main button you can switch to a subface with shutter control. You will need a tasmota with shutter config and various mqtt-functions for this to work.
 - Next display shows the date. You can switch to big display by pressing the middle button. An list of "icons of the day" is displayed on first face.  
 Due to possible license issues I've put only one self created animated Icon here on Github (dancing.miff in specialicons). You must upload all icons to the device first (see below).  
 The managing of the list is possible with MQTT. Topic for changes is tasmberry/\<device topic\>/iotd, result will be given in tasmberry/\<device topic\>/iotdout. Commands can be sent with JSON-payload:
