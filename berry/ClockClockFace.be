@@ -7,7 +7,6 @@ import mqtt
 class ClockClockFace: BaseClockFace
 
     var weather
-    var shutter
     var iconHandlerL
     var iconHandlerR
     var shuttericonclose
@@ -16,6 +15,8 @@ class ClockClockFace: BaseClockFace
     var nextShutterAction
     var timerGlobalState
     var slowMQTT
+    var buttonHoldDone
+    static buttonHoldTimerID="shutterfacebuttonhold" 
 
 
     def init(clockfaceManager)
@@ -23,13 +24,13 @@ class ClockClockFace: BaseClockFace
         # will be called in render
         # self.matrixController.clear()
         self.weather = self.clockfaceManager.weather
-        self.shutter = false
         self.shuttericonclose = "shutterclose.miff"
         self.shuttericonopen = "shutteropen.miff"
         self.shutterMove = false
         self.nextShutterAction = "??:??"
         self.timerGlobalState = "???"
         self.slowMQTT = 0
+        self.buttonHoldDone = false
         mqtt.subscribe("tasmberry/rollschlaf/timerout", /topic,idx,payload_s,payload_b-> self.handleShutterTimerOut(topic,idx,payload_s,payload_b))
     end
 
@@ -49,24 +50,41 @@ class ClockClockFace: BaseClockFace
     
     def handleActionButton(value)
         var so13 = tasmota.get_option(13)
-        log("handleActionButton: value="+str(value)+" so13="+str(so13)+" shutter:"+str(self.shutter),2)
-        if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only, otherwise there will be only one button action
-            self.shutter = !self.shutter
-            # if button was pressed on normal face, stopp shutter and initialize IconHandler
-            if self.shutter
-                mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop any shutter movement
-                self.shutterMove = false # and remember that shutter has stopped
-                self.iconHandlerL = IconHandler() # get an iconhandler for drawing left icon
-                self.iconHandlerR = IconHandler() # get an iconhandler for drawing right icon
-                self.clockfaceManager.subfaceshown = true # will redirect prev and next button to this clockface
-            else
-                self.clockfaceManager.subfaceshown = false
-                self.iconHandlerL.stopiconlist()
-                self.iconHandlerR.stopiconlist()
-                self.matrixController.clear(true) # must clear foreground, as this will not be done by render
-                self.iconHandlerL = nil
-                self.iconHandlerR = nil
-            end
+        var holdtime = ( tasmota.get_option(32) * 100 )
+        
+        log("handleActionButton: value="+str(value)+" so13="+str(so13)+" subface:"+str(self.clockfaceManager.subfaceshown),3)
+        if !self.clockfaceManager.subfaceshown && ( ( so13 == 1 && value == 15 ) || (so13 == 0) ) # all button actions on normal face
+            mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop any shutter movement
+            self.shutterMove = false # and remember that shutter has stopped
+            self.iconHandlerL = IconHandler() # get an iconhandler for drawing left icon
+            self.iconHandlerR = IconHandler() # get an iconhandler for drawing right icon
+            self.clockfaceManager.subfaceshown = true # activate subface
+        elif self.clockfaceManager.subfaceshown && ( ( value == 3 ) && ( so13 == 0 ) )# react on hold on subface, if setoption13 is 0
+            mqtt.publish("cmnd/rollschlaf/timers","toggle") # toggle timers on/off on button hold
+        elif self.clockfaceManager.subfaceshown && ( ( value == 10 ) && ( so13 == 0 ) )# react on single on subface, if setoption13 is 0
+            # reactivate normal face
+            self.iconHandlerL.stopiconlist()
+            self.iconHandlerR.stopiconlist()
+            self.matrixController.clear(true) # must clear foreground, as this will not be done by render
+            self.iconHandlerL = nil
+            self.iconHandlerR = nil
+            self.clockfaceManager.subfaceshown = false
+        elif self.clockfaceManager.subfaceshown && ( ( value == 10 ) && ( so13 == 1 ) )# on click start hold timer for setoption13=1
+            self.buttonHoldDone = false
+            tasmota.set_timer(holdtime,/-> self.buttonHoldReached(), self.buttonHoldTimerID) # toggle timers on/off after button hold time reached
+        elif self.clockfaceManager.subfaceshown && ( ( value == 15 ) && ( so13 == 1 ) ) && !self.buttonHoldDone # setoption13=1, react on clear if button hold time is not reached
+            tasmota.remove_timer(self.buttonHoldTimerID) # stop hold timer, if it is running
+            self.buttonHoldDone = false # reset button hold done
+            # reactivate normal face
+            self.iconHandlerL.stopiconlist()
+            self.iconHandlerR.stopiconlist()
+            self.matrixController.clear(true) # must clear foreground, as this will not be done by render
+            self.iconHandlerL = nil
+            self.iconHandlerR = nil
+            self.clockfaceManager.subfaceshown = false # switch back to normal face
+        #elif self.clockfaceManager.subfaceshown && ( ( value == 15 ) && ( so13 == 1 ) ) && self.buttonHoldDone # button hold action already triggered, nothing to do
+        else
+            self.buttonHoldDone = false
         end
     end
 
@@ -107,7 +125,7 @@ class ClockClockFace: BaseClockFace
 
     def render()
         self.matrixController.clear()
-        if self.shutter
+        if self.clockfaceManager.subfaceshown
              self.renderShutter()
         else
              self.renderClock()
@@ -115,13 +133,15 @@ class ClockClockFace: BaseClockFace
     end
 
     def renderShutter()
-        # To avoid too many MQTT messages, we send both queries alternatively
+        # To avoid too many MQTT messages, we send queries only every 5 render cycles
         if self.slowMQTT == 0
             mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"NextShutterAction\"}")
             self.slowMQTT = 1
-        else
+        elif self.slowMQTT == 2
             mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"TimerGlobalState\"}")
-            self.slowMQTT = 0
+            self.slowMQTT = 3
+        else
+            self.slowMQTT = (self.slowMQTT +1)%5
         end
         if !self.iconHandlerL.IconlistRunning 
             self.iconHandlerL.stopiconlist()
@@ -132,8 +152,8 @@ class ClockClockFace: BaseClockFace
             self.iconHandlerR.starticonlist([self.shuttericonopen],25,0,40,self.clockfaceManager) 
         end
         self.matrixController.change_font('MatrixDisplay3x5')
-        if self.timerGlobalState == "OFF"
-            self.matrixController.print_string("OFF", 10, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        if self.timerGlobalState != "ON"
+            self.matrixController.print_string(self.timerGlobalState, 10, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
         else
             self.matrixController.print_string(self.nextShutterAction[0..5], 8, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
         #self.matrixController.print_string(self.nextShutterAction[2], 16, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
@@ -262,6 +282,12 @@ class ClockClockFace: BaseClockFace
             return true
         end
 
+    end
+
+    def buttonHoldReached()
+        self.buttonHoldDone = true
+        mqtt.publish("cmnd/rollschlaf/timers","toggle") # toggle timers on/off after button hold time reached
+        self.timerGlobalState = "SENT" # give feedback that mqtt has been sent
     end
 
 end
