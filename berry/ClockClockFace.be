@@ -14,6 +14,8 @@ class ClockClockFace: BaseClockFace
     var shuttericonopen
     var shutterMove
     var nextShutterAction
+    var timerGlobalState
+    var slowMQTT
 
 
     def init(clockfaceManager)
@@ -25,7 +27,9 @@ class ClockClockFace: BaseClockFace
         self.shuttericonclose = "shutterclose.miff"
         self.shuttericonopen = "shutteropen.miff"
         self.shutterMove = false
-        self.nextShutterAction = "?"
+        self.nextShutterAction = "??:??"
+        self.timerGlobalState = "???"
+        self.slowMQTT = 0
         mqtt.subscribe("tasmberry/rollschlaf/timerout", /topic,idx,payload_s,payload_b-> self.handleShutterTimerOut(topic,idx,payload_s,payload_b))
     end
 
@@ -111,7 +115,14 @@ class ClockClockFace: BaseClockFace
     end
 
     def renderShutter()
-        mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"NextShutterAction\"}")
+        # To avoid too many MQTT messages, we send both queries alternatively
+        if self.slowMQTT == 0
+            mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"NextShutterAction\"}")
+            self.slowMQTT = 1
+        else
+            mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"TimerGlobalState\"}")
+            self.slowMQTT = 0
+        end
         if !self.iconHandlerL.IconlistRunning 
             self.iconHandlerL.stopiconlist()
             self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager) 
@@ -121,9 +132,13 @@ class ClockClockFace: BaseClockFace
             self.iconHandlerR.starticonlist([self.shuttericonopen],25,0,40,self.clockfaceManager) 
         end
         self.matrixController.change_font('MatrixDisplay3x5')
-        self.matrixController.print_string(self.nextShutterAction[0..1], 8, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
-        self.matrixController.print_string(self.nextShutterAction[2], 16, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
-        self.matrixController.print_string(self.nextShutterAction[3..4], 18, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        if self.timerGlobalState == "OFF"
+            self.matrixController.print_string("OFF", 10, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        else
+            self.matrixController.print_string(self.nextShutterAction[0..5], 8, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        #self.matrixController.print_string(self.nextShutterAction[2], 16, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        #self.matrixController.print_string(self.nextShutterAction[3..4], 18, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        end
     end
 
     def renderClock()
@@ -222,23 +237,31 @@ class ClockClockFace: BaseClockFace
     def handleShutterTimerOut(topic,idx,payload_s,payload_b)
         import json
         var payload_json = json.load(payload_s)
-        var respNextShutterAction
+        var resptimerout
     
         log("handleShutterTimerOut: topic="+topic+" idx="+str(idx)+" payload_s="+payload_s+" payload_b="+str(payload_b),3)
         if payload_json == nil
-        log("ClockClockFace: No valid Json in MQTT-message from " + str(topic),1)
-        return true
+            log("ClockClockFace: No valid Json in MQTT-message from " + str(topic),1)
+            return true
         end
     
-        try 
-        respNextShutterAction = payload_json['NextShutterAction']
-        except .. as err
-        log("ClockClockFace: Could not find NextShutterAction in MQTT-message, error:" + str(err),1)
-        return true
+        if payload_json.find('NextShutterAction') != nil
+            self.nextShutterAction = payload_json['NextShutterAction'][11..18]
+            return true
+        elif payload_json.find('Timers') != nil
+            if payload_json['Timers'] == "OFF"
+                self.timerGlobalState = "OFF"
+            elif payload_json['Timers'] == "ON"
+                self.timerGlobalState = "ON"
+            else
+                self.timerGlobalState = "???"
+            end
+            return true
+        else
+            log("ClockClockFace: Can't interpret MQTT-message: " + payload_s,1)
+            return true
         end
 
-        self.nextShutterAction = respNextShutterAction[11..18]
-        return true
     end
 
 end
