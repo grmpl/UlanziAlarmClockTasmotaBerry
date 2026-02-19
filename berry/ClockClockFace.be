@@ -13,6 +13,7 @@ class ClockClockFace: BaseClockFace
     var shuttericonclose
     var shuttericonopen
     var shutterMove
+    var nextShutterAction
 
 
     def init(clockfaceManager)
@@ -24,6 +25,8 @@ class ClockClockFace: BaseClockFace
         self.shuttericonclose = "shutterclose.miff"
         self.shuttericonopen = "shutteropen.miff"
         self.shutterMove = false
+        self.nextShutterAction = "?"
+        mqtt.subscribe("tasmberry/rollschlaf/timerout", /topic,idx,payload_s,payload_b-> self.handleShutterTimerOut(topic,idx,payload_s,payload_b))
     end
 
     def close()
@@ -108,16 +111,19 @@ class ClockClockFace: BaseClockFace
     end
 
     def renderShutter()
+        mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"NextShutterAction\"}")
         if !self.iconHandlerL.IconlistRunning 
             self.iconHandlerL.stopiconlist()
             self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager) 
         end
         if !self.iconHandlerR.IconlistRunning 
             self.iconHandlerR.stopiconlist()
-            self.iconHandlerR.starticonlist([self.shuttericonopen],24,0,40,self.clockfaceManager) 
+            self.iconHandlerR.starticonlist([self.shuttericonopen],25,0,40,self.clockfaceManager) 
         end
-        #self.matrixController.change_font('MatrixDisplay3x5')
-        #self.matrixController.print_string("SHUTTER", 11, 0, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.change_font('MatrixDisplay3x5')
+        self.matrixController.print_string(self.nextShutterAction[0..1], 8, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(self.nextShutterAction[2], 16, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
+        self.matrixController.print_string(self.nextShutterAction[3..4], 18, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
     end
 
     def renderClock()
@@ -181,6 +187,12 @@ class ClockClockFace: BaseClockFace
         end
 
         # Display alarm
+        # Check if alarm is globally disabled, if yes, display violet
+        var alarmdisabled=false
+        if tasmota.cmd("_Timers",true)["Timers"] == "OFF" || tasmota.cmd("_Rule1",true)["Rule1"]["State"] == "OFF"
+            alarmdisabled=true
+        end
+            
                
         # Reduced to 3 alarm times for i:1..4
         for i:1..3
@@ -192,6 +204,8 @@ class ClockClockFace: BaseClockFace
             elif persist.member('alarmactive') == i
                 #Alarm active
                 self.matrixController.set_matrix_pixel_color(28+i, 0, 0xffff00, self.clockfaceManager.brightness)
+            elif alarmdisabled
+                self.matrixController.set_matrix_pixel_color(28+i, 0, 0xff00ff, self.clockfaceManager.brightness)
             elif
                 timeract == 0
                 self.matrixController.set_matrix_pixel_color(28+i, 0, 0xff0000, self.clockfaceManager.brightness)
@@ -205,6 +219,27 @@ class ClockClockFace: BaseClockFace
         
     end
 
-end
+    def handleShutterTimerOut(topic,idx,payload_s,payload_b)
+        import json
+        var payload_json = json.load(payload_s)
+        var respNextShutterAction
+    
+        log("handleShutterTimerOut: topic="+topic+" idx="+str(idx)+" payload_s="+payload_s+" payload_b="+str(payload_b),3)
+        if payload_json == nil
+        log("ClockClockFace: No valid Json in MQTT-message from " + str(topic),1)
+        return true
+        end
+    
+        try 
+        respNextShutterAction = payload_json['NextShutterAction']
+        except .. as err
+        log("ClockClockFace: Could not find NextShutterAction in MQTT-message, error:" + str(err),1)
+        return true
+        end
 
+        self.nextShutterAction = respNextShutterAction[11..18]
+        return true
+    end
+
+end
 return ClockClockFace

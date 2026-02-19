@@ -118,6 +118,7 @@ class AlarmClockFaceBase: BaseClockFace
         tasmota.cmd("_"+self.timerstr+" {\"Time\":\"" + format("%02i:%02i",self.EditHour, self.EditMinute) + "\"}",true)
         self.clockfaceManager.alarmHandler.buzzer_alarmoff(1,50,100,2)
         self.clockfaceManager.alarmedit = false
+        self.clockfaceManager.subfaceshown = false  # give back control of prev and next button to clockface
         self.clockfaceManager.redraw()
         self.ButtonHoldDone=true # ignore following clear actions
     end

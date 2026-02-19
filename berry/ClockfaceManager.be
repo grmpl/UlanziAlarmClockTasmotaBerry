@@ -59,6 +59,9 @@ class ClockfaceManager
     var energysaveoverride # indicates a button press which will override the energsave for some time
     var energysaveClockfaceActive # indicates that energysaveClockface is currently active
     var lowerbrightnessActive # pre-stage of energysaveClockface
+    var voltagetest # for testing voltage levels without real voltage change, will be set to 0 for normal use
+    var ULPcounter1
+    var ULPcounter2
 
     static snoozetime=360 # 6 minutes snooze time parametrization
     static buttonholdtimerID="buttonhold" # necessary for removing timer
@@ -69,51 +72,59 @@ class ClockfaceManager
         # switch on power plug in case we come from deep sleep with power plug off
         # as we are just starting we have to wait for MQTT!
         self.wait_for_mqtt_and_publish("cmnd/Weckerstecker/Power","On")
+        # Save state of ULP memory, as AlarmHandler will overwrite it
+        self.ULPcounter1 = ULP.get_mem(21)
+        self.ULPcounter2 = ULP.get_mem(22)
+        # Initialize all instances, which will be shared 
         self.matrixController = MatrixController()
         self.alarmHandler = AlarmHandler()
         self.weather = Weather()
-        self.lastredraw=0
-        self.buttonholddone=false
-        self.energysaveoverride=tasmota.millis()
-        self.energysaveClockfaceActive = false
-        self.lowerbrightnessActive = false
+        # Set some values for program behaviour
         if global.contains('GlobalIconfileDir')
             self.IconfileDir=GlobalIconfileDir
         else
             self.IconfileDir=""
         end
-
-
         self.brightness = 50;
         self.color = 0xff0000
-
-        self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
-        self.matrixController.draw()
-
+        # Initialize all variables
+        self.lastredraw=0 
+        self.buttonholddone=false
+        self.energysaveoverride=tasmota.millis()
+        self.energysaveClockfaceActive = false
+        self.lowerbrightnessActive = false
+        self.voltagetest = 0
         self.alarmedit = false
-
-        self.currentClockFaceIdx = 0
-        self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
-
-        tasmota.add_rule("Button1#State", / value, trigger, msg -> self.on_button_prev(value, trigger, msg))
-        tasmota.add_rule("Button2#State", / value, trigger, msg -> self.on_button_action(value, trigger, msg))
-        tasmota.add_rule("Button3#State", / value, trigger, msg -> self.on_button_next(value, trigger, msg))
-
+        
+        # Load persistency
         # Reset Snooze after reinit
         self.snoozerunning = 0
         persist.snooze = 0
-
-
         # Check for AlarmActive and initialize if necessary
         if persist.member('alarmactive') == nil
             persist.alarmactive = 0
         end
-
+        #  Iotdlist
         if persist.member('iotdlist') == nil
             persist.iotdlist = ['iotd.pam']
         end
-
         persist.save()
+
+
+        # Start display
+        self.matrixController.print_string("Hello :)", 3, 2, true, self.color, self.brightness)
+        self.matrixController.draw()
+
+
+        self.currentClockFaceIdx = 0
+        self.currentClockFace = clockFaces[self.currentClockFaceIdx](self)
+
+        # Add Button actions
+        tasmota.add_rule("Button1#State", / value, trigger, msg -> self.on_button_prev(value, trigger, msg))
+        tasmota.add_rule("Button2#State", / value, trigger, msg -> self.on_button_action(value, trigger, msg))
+        tasmota.add_rule("Button3#State", / value, trigger, msg -> self.on_button_next(value, trigger, msg))
+
+
 
         # Add MQTT-listener
         mqtt.subscribe("tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotd",/topic idx payload_s payload_b->self.iotdmqtt(topic,idx,payload_s,payload_b) )
@@ -326,26 +337,45 @@ class ClockfaceManager
         var udeepsleep = 2750 # voltage level to go to deep sleep
         var sensors = json.load(tasmota.read_sensors()) # takes time to read, but sensor values are always needed - either for luminance or voltage
         var illuminance = sensors['ANALOG']['Illuminance1']
-        var voltage = sensors['ANALOG']['A2']
-        if tasmota.time_reached( self.energysaveoverride + waitoverride ) # override over
+        var voltage 
+        if self.voltagetest > 0
+            log("ClockfaceManager: Using test voltage: " + str(self.voltagetest),3)
+            voltage = self.voltagetest
+        else
+            voltage = sensors['ANALOG']['A2']
+        end
+
+        if tasmota.time_reached( self.energysaveoverride + waitoverride ) && persist.member('alarmactive') == 0# override over and no alarm active
             #log("no override",2)
             if voltage < udeepsleep
-                # This is not worth the effort - seems to save only little of energy, but as it is implemented, I will keep it 
-                log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage),3)
-
-                self.currentClockFace.close()
-                self.matrixController.leds.clear()
-                # Providing Button-GPIOs to ULP to wake up on button press)
-                ULP.gpio_init(gpio.pin(gpio.KEY1,0),0)
-                ULP.gpio_init(gpio.pin(gpio.KEY1,1),0)
-                ULP.gpio_init(gpio.pin(gpio.KEY1,2),0)
-                # Wake up every 100ms to check button state, will not wake up SoC, so 100msec should be good for responsiveness
-                ULP.wake_period(0,100000)
-                # Code from Wakeup.py
-                var c = bytes().fromb64("dWxwAAwATAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CMQGAcgQAANAQAAByBAAAaAAAAJIAAACwQQGAcgQAANAQAAByBAAAaAEAAJAAAACSAAAAsAAAAAAAAAAA")
-                ULP.load(c)
-                ULP.run()
-                ULP.sleep(self.getnextalarmtime(false)-100) # sleep until next alarm, if no alarm, sleep indefinitely until button press
+                # To be honest: This is not worth the effort - seems to save only little of energy, but as it is implemented, I will keep it 
+                var sleeptime = self.getnextalarmtime(false) # next alarm time minus 3 minutes, as we want to wake up a bit before the alarm to be sure that clockface is active when alarm starts; if no alarm, getnextalarmtime will return nil and ULP.sleep will sleep indefinitely until button press
+                if sleeptime > 600 || sleeptime == -1 # only go to sleep if there is enough time (10 Minutes) or no alarm is set
+                    if sleeptime > 3600*(3*24+12) # ULP.sleep does not support 5 days of sleep time and longer, haven't found the reason for this, but it will wake up immediately if time is too long
+                        sleeptime = 3600*(3*24+12) # battery will be empty with this time, so maybe this should be changed
+                    elif sleeptime == -1 # no alarm is set, sleep maximum time
+                        sleeptime = 0
+                    end
+                    log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage) + ", sleep time: " + str(sleeptime),3)
+                    self.currentClockFace.close()
+                    self.matrixController.leds.clear()
+                    # Providing Button-GPIOs to ULP to wake up on button press)
+                    ULP.gpio_init(gpio.pin(gpio.KEY1,0),0)
+                    ULP.gpio_init(gpio.pin(gpio.KEY1,1),0)
+                    ULP.gpio_init(gpio.pin(gpio.KEY1,2),0)
+                    # Wake up every 100ms to check button state, will not wake up SoC, 100msec should be good for responsiveness
+                    ULP.wake_period(0,100000)
+                    # Code from Wakeup.py
+                    var c = bytes().fromb64("dWxwAAwAVAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CUQGAcgQAANAQAAByBAAAaAAAAJIAAACwYQGAcgQAANAQAAByBAAAaDAAzCkQAEByQABAgAEAAJAAAACwAAAAAAAAAAA=") # Version from 19.2.2026 with RTC_CNTL_RDY_FOR_WAKEUP
+                    ULP.load(c)
+                    ULP.run()
+                    # logging should be finished and tasmota should get time to clean up
+                    tasmota.remove_driver(self) # stop being called again
+                    tasmota.set_timer(2000,/->ULP.sleep(sleeptime),"sleeptimer")#sleep until next alarm, if no alarm is found, sleep maximum time defined by getnextalarmtime
+                    return
+                else
+                    log("ClockfaceManager: Not going to deep sleep, because next alarm is in less than 10 minutes", 3)
+                end
             end
 
                 
@@ -621,11 +651,17 @@ class ClockfaceManager
     end
 
     def getnextalarmtime(absolute)
+        # calculate next alarm time 
+        #  offset will be added to the next alarm time
+        #  absolute defines if absolute time (epoch) should be returned or just seconds to nexta alarm
         var time=tasmota.rtc()['local']
         var today = tasmota.strftime("%Y %m %d",tasmota.rtc()['local'])
         var dayofweek=tasmota.time_dump(time)['weekday']
-        var latesttime = time + (7*24*3600) + 10 # latest next time can be in next week, as Tasmota timers are scheduled on weekly base
+        var latesttime = time + (365*24*3600) # if no alarm is found, we could give back nil, 0 or a upper limit; I choose upper limit, as it is easier to handle: nil must be handled separately and 0 could be a valid time
         var nexttimer = latesttime # initialize with latest time to compare
+        if absolute == nil
+            absolute = true
+        end
 
         for i:1..3 # Number of Alarms is hardcoded
             var timerstr = "Timer"+str(i)
@@ -670,16 +706,17 @@ class ClockfaceManager
 
             end
         end
-        if nexttimer == latesttime
-            return nil # no active timer found
+        if nexttimer >= latesttime
+            return -1 # no active timer found
         else
             if absolute
                 return nexttimer
             else
-                return nexttimer - time # return time to next alarm, not absolute time
+                return nexttimer-time # return time to next alarm, not absolute time
             end
         end
     end
+
 
 end
 

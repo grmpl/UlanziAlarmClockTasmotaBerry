@@ -7,7 +7,8 @@ ULP.gpio_init(gpio.pin(gpio.KEY1,0),0)
 ULP.gpio_init(gpio.pin(gpio.KEY1,1),0)
 ULP.gpio_init(gpio.pin(gpio.KEY1,2),0)
 ULP.wake_period(0,100000)
-var c = bytes().fromb64("dWxwAAwATAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CMQGAcgQAANAQAAByBAAAaAAAAJIAAACwQQGAcgQAANAQAAByBAAAaAEAAJAAAACSAAAAsAAAAAAAAAAA")
+var c = bytes().fromb64("dWxwAAwAVAAIAAAACQH8LwEAFoIJAdQqAQASggkBeC8BAA6CUQGAcgQAANAQAAByBAAAaAAAAJIAAACwYQGAcgQAANAQAAByBAAAaDAAzCkQAEByQABAgAEAAJAAAACwAAAAAAAAAAA=")
+
 ULP.load(c)
 ULP.run()
 
@@ -19,12 +20,14 @@ import ubinascii
 source = """
 #define DR_REG_RTCIO_BASE                       0x3ff48400 # base for IO-register see 6.13.3 in https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf
 #define RTCIO_RTC_GPIO_IN_REG             (DR_REG_RTCIO_BASE + 0x24) # IN-Register see Register 6.44 in chapter above, 0-13 is reserved, starting from bit 14
+#define RTC_REG_BASE                    0x3FF48000 # chapter 9.4 
+#define RTC_CNTL_LOW_POWER_ST_REG       (RTC_REG_BASE + 0xC0) # Register 9.19 in chapter 9.5, bit 19 is RDY_FOR_WAKEUP
 
 .data
-.global result1
-result1: .long 0 # to check programming functionality
-.global result2
-result2: .long 0
+.global countnobutton
+countnobutton: .long 0 # counting 
+.global countbutton
+countbutton: .long 0
 .text 
 .global entry
 entry:
@@ -34,20 +37,24 @@ entry:
     JUMPR  wake, 1, LT # default state of GPIO17 is high, when button is pressed, it will be low
     READ_RTC_REG(RTCIO_RTC_GPIO_IN_REG, 14+16, 1) # read state of GPIO17 (right button) into register r0
     JUMPR  wake, 1, LT # default state of GPIO17 is high, when button is pressed, it will be low
-    #increment result1
-    move r1, result1 # get address of result1
-    ld r0, r1, 0 # load value of result1 into r0
+    #increment countnobutton
+    move r1, countnobutton # get address of countnobutton
+    ld r0, r1, 0 # load value of countnobutton into r0
     add r0, r0, 1 # increment value in r0
-    st r0, r1, 0 # store incremented value back to result1    
+    st r0, r1, 0 # store incremented value back to countnobutton    
     sleep 0
     halt
 wake:
-    move r1, result2 # get address of result2
-    ld r0, r1, 0 # load value of result2 into r0
+    move r1, countbutton # get address of countbutton
+    ld r0, r1, 0 # load value of countbutton into r0
     add r0, r0, 1 # increment value in r0
-    st r0, r1, 0 # store incremented value back to result2
+    st r0, r1, 0 # store incremented value back to countbutton
+isreadyforwakeup:
+    READ_RTC_REG(RTC_CNTL_LOW_POWER_ST_REG, 19, 1) # read RDY_FOR_WAKEUP bit into r0
+    AND r0, r0, 1
+    JUMP isreadyforwakeup,eq # wait until RDY_FOR_WAKEUP bit is set
     wake
-    sleep 0
+    #REG_WR 0x006, 24, 24, 0   # STOP ULP timer
     halt
 """
 
