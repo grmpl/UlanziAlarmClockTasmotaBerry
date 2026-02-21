@@ -133,6 +133,7 @@ class ClockClockFace: BaseClockFace
     end
 
     def renderShutter()
+        # loadavg 89-140, mostly around 100, responiveness is ok
         # To avoid too many MQTT messages, we send queries only every 5 render cycles
         if self.slowMQTT == 0
             mqtt.publish("tasmberry/rollschlaf/timerin","{\"action\":\"NextShutterAction\"}")
