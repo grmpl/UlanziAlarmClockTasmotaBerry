@@ -46,6 +46,15 @@ class ClockClockFace: BaseClockFace
             self.iconHandlerR.stopiconlist()
             self.iconHandlerR = nil
         end
+        # leave subface - otherwise we would have to handle reentry, too
+        self.clockfaceManager.subfaceshown = false
+        # clean up other things
+        tasmota.remove_timer(self.buttonHoldTimerID) 
+        self.buttonHoldDone = false
+        self.matrixController.clear(true) 
+        mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop shutter move 
+        self.shutterMove = false
+
     end
     
     def handleActionButton(value)
@@ -96,7 +105,7 @@ class ClockClockFace: BaseClockFace
         if ( so13 == 1 && value == 15 ) || (so13 == 0) # for setoption13=1 react on clear only
             # if shutter is moving, stop it, if it is stopped, open it
             if self.shutterMove
-                mqtt.publish("cmnd/rollschlaf/shutterstop","") # open shutter on button press
+                mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop shutter move on button press
                 self.shutterMove = false
             else
                 mqtt.publish("cmnd/rollschlaf/shutterclose","") # open shutter on button press
