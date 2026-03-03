@@ -52,7 +52,7 @@ class ClockClockFace: BaseClockFace
         tasmota.remove_timer(self.buttonHoldTimerID) 
         self.buttonHoldDone = false
         self.matrixController.clear(true) 
-        mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop shutter move 
+        mqtt.publish("cmnd/rollschlaf/shutterstop","{}") # stop shutter move, brackets avoid warning message about invalid json
         self.shutterMove = false
 
     end
@@ -63,13 +63,14 @@ class ClockClockFace: BaseClockFace
         
         log("handleActionButton: value="+str(value)+" so13="+str(so13)+" subface:"+str(self.clockfaceManager.subfaceshown),3)
         if !self.clockfaceManager.subfaceshown && ( ( so13 == 1 && value == 15 ) || (so13 == 0) ) # all button actions on normal face
-            mqtt.publish("cmnd/rollschlaf/shutterstop","") # stop any shutter movement
+            mqtt.publish("cmnd/rollschlaf/shutterstop","{}") # stop any shutter movement - with empty string instead of brackets, there is a warning on console about invalid json
             self.shutterMove = false # and remember that shutter has stopped
             self.iconHandlerL = IconHandler() # get an iconhandler for drawing left icon
             self.iconHandlerR = IconHandler() # get an iconhandler for drawing right icon
             self.clockfaceManager.subfaceshown = true # activate subface
         elif self.clockfaceManager.subfaceshown && ( ( value == 3 ) && ( so13 == 0 ) )# react on hold on subface, if setoption13 is 0
-            mqtt.publish("cmnd/rollschlaf/timers","toggle") # toggle timers on/off on button hold
+            #mqtt.publish("cmnd/rollschlaf/timers","toggle") # toggle timers on/off on button hold
+            mqtt.publish("cmnd/rollschlaf/power4","toggle") # toggle timers on/off on button hold, timers will be controlled by rule with power4 state, to control LED, too
         elif self.clockfaceManager.subfaceshown && ( ( value == 10 ) && ( so13 == 0 ) )# react on single on subface, if setoption13 is 0
             # reactivate normal face
             self.iconHandlerL.stopiconlist()
@@ -155,17 +156,20 @@ class ClockClockFace: BaseClockFace
         end
         if !self.iconHandlerL.IconlistRunning 
             self.iconHandlerL.stopiconlist()
+            # optimized icons with only 6 pixel width
             self.iconHandlerL.starticonlist([self.shuttericonclose],0,0,40,self.clockfaceManager) 
         end
         if !self.iconHandlerR.IconlistRunning 
             self.iconHandlerR.stopiconlist()
+            # optimized icons with only 6 pixel width, we don't use rightmost pixel column
             self.iconHandlerR.starticonlist([self.shuttericonopen],25,0,40,self.clockfaceManager) 
         end
         self.matrixController.change_font('MatrixDisplay3x5')
         if self.timerGlobalState != "ON"
             self.matrixController.print_string(self.timerGlobalState, 10, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
         else
-            self.matrixController.print_string(self.nextShutterAction[0..5], 8, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
+            # XX : YY is 17 pixels in 3x5 with compressed = true
+            self.matrixController.print_string(self.nextShutterAction[0..5], 7, 2, true, self.clockfaceManager.color, self.clockfaceManager.brightness)
         #self.matrixController.print_string(self.nextShutterAction[2], 16, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         #self.matrixController.print_string(self.nextShutterAction[3..4], 18, 2, false, self.clockfaceManager.color, self.clockfaceManager.brightness)
         end

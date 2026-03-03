@@ -349,12 +349,13 @@ class ClockfaceManager
             #log("no override",2)
             if voltage < udeepsleep
                 # To be honest: This is not worth the effort - seems to save only little of energy, but as it is implemented, I will keep it 
-                var sleeptime = self.getnextalarmtime(false) # next alarm time minus 3 minutes, as we want to wake up a bit before the alarm to be sure that clockface is active when alarm starts; if no alarm, getnextalarmtime will return nil and ULP.sleep will sleep indefinitely until button press
-                if sleeptime > 600 || sleeptime == -1 # only go to sleep if there is enough time (10 Minutes) or no alarm is set
-                    if sleeptime > 3600*(3*24+12) # ULP.sleep does not support 5 days of sleep time and longer, haven't found the reason for this, but it will wake up immediately if time is too long
-                        sleeptime = 3600*(3*24+12) # battery will be empty with this time, so maybe this should be changed
-                    elif sleeptime == -1 # no alarm is set, sleep maximum time
+                var sleeptime = self.getnextalarmtime(false) # next alarm time 
+                if sleeptime > 3600 || sleeptime == -1 # only go to sleep if there is enough time (1 hour) or no alarm is set
+                    # Rework necessary: There is no limit of ULP.sleep at 5 days! It's wrong usage of integers: sleep expects 64bit integers, but tasmota is using 32bit integers
+                    if sleeptime == -1 # no alarm is set, sleep maximum time
                         sleeptime = 0
+                    else
+                        sleeptime = sleeptime - 900 # wake 15 minutes before alarm
                     end
                     log("ClockfaceManager: Going to deep sleep to save energy, voltage: " + str(voltage) + ", sleep time: " + str(sleeptime),3)
                     self.currentClockFace.close()
