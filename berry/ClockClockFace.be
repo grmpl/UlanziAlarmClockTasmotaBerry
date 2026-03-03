@@ -300,7 +300,7 @@ class ClockClockFace: BaseClockFace
 
     def buttonHoldReached()
         self.buttonHoldDone = true
-        mqtt.publish("cmnd/rollschlaf/timers","toggle") # toggle timers on/off after button hold time reached
+        mqtt.publish("cmnd/rollschlaf/power4","toggle") # toggle timers on/off after button hold time reached
         self.timerGlobalState = "SENT" # give feedback that mqtt has been sent
     end
 
