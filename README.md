@@ -1,3 +1,9 @@
+# Branch Shutter-Face
+Contains some code which needs specific environment:
+1. A face to control a Tasmota Shutter with some specific implementation
+2. Using ULP.sleep() for energy saving. As of now (Tasmota 15.2.0) this function is buggy and needs to be patched for code to work. 
+3. iotdlist is requested on start. Needs a Mqtt-client listening to this.
+
 # Tasmota-Ulanzi-AlarmClock with ULP-based buzzer and possibility to display animated icons
 Tasmota Berry Implementation of an Alarm Clock on a Ulanzi TC001 with a ULP-based buzzer.
 
