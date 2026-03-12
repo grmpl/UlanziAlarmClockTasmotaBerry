@@ -128,6 +128,9 @@ class ClockfaceManager
 
         # Add MQTT-listener
         mqtt.subscribe("tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotd",/topic idx payload_s payload_b->self.iotdmqtt(topic,idx,payload_s,payload_b) )
+
+        # Request Update of iotdlist
+        self.wait_for_mqtt_and_publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}")
         
         # And create a custom Tasmota-Command
         tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
