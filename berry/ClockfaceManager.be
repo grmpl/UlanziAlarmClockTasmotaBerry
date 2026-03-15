@@ -131,6 +131,8 @@ class ClockfaceManager
 
         # Request Update of iotdlist
         self.wait_for_mqtt_and_publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}")
+        tasmota.add_cron("20 6 4,8,12,18,21 * * *", /-> mqtt.publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}"),"GetIotdList")
+
         
         # And create a custom Tasmota-Command
         tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
