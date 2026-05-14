@@ -58,6 +58,8 @@ class ClockfaceManager
     # Handling energy saving states
     var energysaveoverride # indicates a button press which will override the energsave for some time
     var energysaveClockfaceActive # indicates that energysaveClockface is currently active
+    var weckersteckeron
+    var lastweckersteckerupdate
     var lowerbrightnessActive # pre-stage of energysaveClockface
     var voltagetest # for testing voltage levels without real voltage change, will be set to 0 for normal use
     var ULPcounter1
@@ -72,6 +74,7 @@ class ClockfaceManager
         # switch on power plug in case we come from deep sleep with power plug off
         # as we are just starting we have to wait for MQTT!
         self.wait_for_mqtt_and_publish("cmnd/Weckerstecker/Power","On")
+        self.lastweckersteckerupdate = tasmota.millis()
         # Save state of ULP memory, as AlarmHandler will overwrite it
         self.ULPcounter1 = ULP.get_mem(21)
         self.ULPcounter2 = ULP.get_mem(22)
@@ -92,6 +95,7 @@ class ClockfaceManager
         self.buttonholddone=false
         self.energysaveoverride=tasmota.millis()
         self.energysaveClockfaceActive = false
+        self.weckersteckeron = true
         self.lowerbrightnessActive = false
         self.voltagetest = 0
         self.alarmedit = false
@@ -128,12 +132,12 @@ class ClockfaceManager
 
         # Add MQTT-listener
         mqtt.subscribe("tasmberry/"+tasmota.cmd('Topic',true)['Topic']+"/iotd",/topic idx payload_s payload_b->self.iotdmqtt(topic,idx,payload_s,payload_b) )
+        mqtt.subscribe("stat/Weckerstecker/RESULT",/topic idx payload_s payload_b->self.weckersteckermqtt(topic,idx,payload_s,payload_b) )
 
         # Request Update of iotdlist
         self.wait_for_mqtt_and_publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}")
         tasmota.add_cron("20 6 4,8,12,18,21 * * *", /-> mqtt.publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}"),"GetIotdList")
 
-        
         # And create a custom Tasmota-Command
         tasmota.add_cmd("AlarmActivate",/ccmd cidx cpayload cpayload_json -> self.cmdAlarmActivate(ccmd,cidx,cpayload,cpayload_json))
         
@@ -312,6 +316,11 @@ class ClockfaceManager
         # try to split blocking berry code into smaller chunks
         tasmota.set_timer(50,/->self.update_brightness_from_sensor(),"brightnesstimer")
 
+        #Update Weckersteckerstate
+        if ( tasmota.millis() - self.lastweckersteckerupdate  > 20000)
+            self.wait_for_mqtt_and_publish("cmnd/Weckerstecker/Power","")
+            self.lastweckersteckerupdate = tasmota.millis()
+        end
 
     end
 
@@ -350,7 +359,8 @@ class ClockfaceManager
             voltage = sensors['ANALOG']['A2']
         end
 
-        if tasmota.time_reached( self.energysaveoverride + waitoverride ) && persist.member('alarmactive') == 0# override over and no alarm active
+        if tasmota.time_reached( self.energysaveoverride + waitoverride ) && persist.member('alarmactive') == 0 && self.weckersteckeron == false# override over and no alarm active and charging off
+            log("ClockfaceManager: Checking voltage for energy saving",3)
             #log("no override",2)
             if voltage < udeepsleep
                 # To be honest: This is not worth the effort - seems to save only little of energy, but as it is implemented, I will keep it 
@@ -625,6 +635,32 @@ class ClockfaceManager
         return true
 
     end    
+
+    def weckersteckermqtt(topic,idx,payload_s,payload_b)
+        log("ClockfaceManager: weckersteckermqtt called with topic: " + str(topic) + " payload: " + str(payload_s),3)
+        var payload_json = json.load(payload_s)
+        if payload_json == nil
+            log("ClockfaceManager: No valid Json in MQTT-message from " + str(topic),1)
+            # processed, do not process further
+            return true
+        end
+        var power
+        try 
+            power = payload_json['POWER']
+        except .. as err
+            log("ClockfaceManager: Could not find power-key in MQTT-message from Weckerstecker, error:" + str(err),1)
+            return true
+        end
+
+        if power == "ON"
+            self.weckersteckeron = true
+        elif power == "OFF"
+            self.weckersteckeron = false
+        else
+            log("ClockfaceManager: No valid state of POWER in weckerstecker",1)
+        end
+
+    end
 
     # Wait for MQTT to be connected and then send the given message
     def wait_for_mqtt_and_publish(topic, message)
