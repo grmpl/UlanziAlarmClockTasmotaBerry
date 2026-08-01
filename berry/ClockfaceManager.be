@@ -135,6 +135,7 @@ class ClockfaceManager
         mqtt.subscribe("stat/Weckerstecker/RESULT",/topic idx payload_s payload_b->self.weckersteckermqtt(topic,idx,payload_s,payload_b) )
 
         # Request Update of iotdlist
+        #  Receiver is systemd user-service ulanzi_iotd 
         self.wait_for_mqtt_and_publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}")
         tasmota.add_cron("20 6 4,8,12,18,21 * * *", /-> mqtt.publish("tasmberry/vetinari/iotd","{\"action\": \"getiotdlist\"}"),"GetIotdList")
 
